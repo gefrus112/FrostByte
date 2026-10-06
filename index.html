@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FrostByte — Free Multiplayer for Every Web Game · play.js</title>
+  <meta name="description" content="FrostByte is a free JavaScript multiplayer library. One script tag, zero servers — matchmaking included, players found on your network, your country, or worldwide.">
+  <meta name="theme-color" content="#05070f">
+  <meta property="og:title" content="FrostByte — free multiplayer for every web game">
+  <meta property="og:description" content="One script. Zero servers. Live matchmaking. Make any HTML5 game multiplayer in minutes.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;❄&lt;/text&gt;&lt;/svg&gt;">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <canvas id="snow"></canvas>
+  <div class="aurora"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+  <div class="grid-overlay"></div>
+
+  <!-- ═══════════ NAV (tabs) ═══════════ -->
+  <header class="nav glass">
+    <a class="brand" href="index.html"><span class="flake">❄</span> FrostByte <span class="brand-sub">play.js</span></a>
+    <nav class="tabs">
+      <a class="tab active" href="index.html">Home</a>
+      <a class="tab" href="docs.html">Docs</a>
+      <a class="tab" href="templates/pong.html">Templates</a>
+      <a class="tab" href="https://github.com/gefrus112/FrostByte" target="_blank" rel="noopener">GitHub ↗</a>
+    </nav>
+    <a class="btn btn-primary nav-cta" href="docs.html">Get Started</a>
+  </header>
+
+  <main class="wrap">
+
+    <!-- ═══════════ HERO ═══════════ -->
+    <section class="hero">
+      <canvas id="mesh" class="hero-mesh"></canvas>
+      <div class="hero-copy reveal">
+        <div class="pill"><span class="dot"></span> v1.0.0 · MIT · 100% free forever</div>
+        <h1>Multiplayer for every game.<br><span class="grad">One script. Zero servers.</span></h1>
+        <p class="lead">
+          <strong>FrostByte</strong> is a tiny JavaScript library that turns any HTML/CSS/JS game into a
+          live multiplayer experience. Drop in <code style="font-family:var(--mono);color:var(--cyan)">play.js</code>,
+          call <strong>quickMatch()</strong> — and your game searches for players on
+          <strong>your network</strong>, in <strong>your country</strong>, then <strong>worldwide</strong>.
+          No backend. No keys. No bills.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary btn-lg" href="docs.html">Read the Docs →</a>
+          <a class="btn btn-ghost btn-lg" href="templates/pong.html">▶ Play the Pong Demo</a>
+        </div>
+        <div class="region-badge" id="regionBadge"><span class="dot"></span> detecting your region…</div>
+      </div>
+
+      <div class="hero-term glass reveal d2">
+        <div class="term-bar"><span></span><span></span><span></span><em>index.html — your game</em></div>
+        <pre><code id="termCode"><span class="t-cm">&lt;!-- that's the whole setup --&gt;</span>
+<span class="t-kw">&lt;script</span> <span class="t-pr">src</span>=<span class="t-str">"play.js"</span><span class="t-kw">&gt;&lt;/script&gt;</span>
+
+<span class="t-kw">const</span> game = <span class="t-kw">new</span> <span class="t-fn">Play</span>({ game: <span class="t-str">'my-game'</span> });
+
+<span class="t-cm">// find a live opponent near you</span>
+game.<span class="t-fn">quickMatch</span>();
+
+game.<span class="t-fn">onPlayerJoin</span> = p =&gt;
+  console.<span class="t-fn">log</span>(p.name + <span class="t-str">' joined!'</span>);
+
+<span class="t-cm">// sync your game state, instantly</span>
+game.<span class="t-fn">broadcast</span>({ type: <span class="t-str">'move'</span>, x: <span class="t-pr">128</span> });</code></pre>
+      </div>
+    </section>
+
+    <!-- ═══════════ FEATURES ═══════════ -->
+    <section class="section" id="features">
+      <h2 class="sec-title reveal">Why <span class="grad">FrostByte</span></h2>
+      <p class="sec-sub reveal">Everything you need for real-time multiplayer — and nothing you don't. No accounts, no servers, no credit card. Just WebRTC doing what it does best.</p>
+
+      <div class="cards">
+        <div class="card reveal">
+          <div class="ico">🆓</div>
+          <h3>Free. Actually free.</h3>
+          <p>Game data travels <strong>peer-to-peer over WebRTC</strong>. The free public broker only does introductions. There is no usage bill — ever. Host the docs on GitHub Pages like this one.</p>
+        </div>
+        <div class="card reveal d1">
+          <div class="ico">⚡</div>
+          <h3>One script, live server</h3>
+          <p>Add <code>&lt;script src="play.js"&gt;</code> and your page <em>is</em> the live server. Works from GitHub Pages, itch.io, Neocities, or a plain <code>file</code> preview — anywhere browsers run.</p>
+        </div>
+        <div class="card reveal d2">
+          <div class="ico">🌍</div>
+          <h3>Smart matchmaking</h3>
+          <p><code>quickMatch()</code> searches players on the <strong>same network</strong> first (same Wi-Fi = zero lag), then your <strong>country</strong>, then <strong>worldwide</strong>. You always find someone.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ico">🕹</div>
+          <h3>Game-ready API</h3>
+          <p><code>host()</code>, <code>join(code)</code>, <code>send()</code>, <code>broadcast()</code>, join/leave events, auto heartbeats, dead-player pruning. Built for games, not for reading RFCs.</p>
+        </div>
+        <div class="card reveal d1">
+          <div class="ico">🔗</div>
+          <h3>Room codes</h3>
+          <p>Want to play with a friend in private? <code>host()</code> mints a 4-character code like <code>K7XF</code>. Send it to anyone on Earth — they're in with one <code>join()</code> call.</p>
+        </div>
+        <div class="card reveal d2">
+          <div class="ico">🔁</div>
+          <h3>Host relays for free</h3>
+          <p>Star topology: the room host relays traffic between players, so 2–8 player games work without a server, and guest→guest messages just work via <code>send(data, toId)</code>.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ico">🧩</div>
+          <h3>Templates included</h3>
+          <p>Copy-paste starting points: a full <strong>multiplayer Pong</strong>, a lobby <strong>chat</strong>, and a minimal <strong>starter</strong>. Fork one and rename the sprites — done.</p>
+        </div>
+        <div class="card reveal d1">
+          <div class="ico">🛠</div>
+          <h3>Open &amp; hackable</h3>
+          <p>MIT licensed, single file, zero dependencies. Read the source, self-host your own signaling broker with <code>peerConfig</code>, or fork the whole thing on GitHub.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ HOW IT WORKS ═══════════ -->
+    <section class="section" id="how">
+      <h2 class="sec-title reveal">Live in <span class="grad">three lines</span></h2>
+      <p class="sec-sub reveal">How to connect your game using JavaScript — the entire ceremony, from cold page to synced multiplayer.</p>
+
+      <div class="steps">
+        <div class="step reveal">
+          <span class="num">STEP 1</span>
+          <h3>Drop in the script</h3>
+          <p>One tag before your game code. That's the whole install — the WebRTC engine self-loads from CDN.</p>
+          <div class="codeblock"><div class="cb-head"><em>your-game.html</em><button class="copy">copy</button></div>
+<pre><code>&lt;script src="https://gefrus112.github.io/FrostByte/play.js"&gt;&lt;/script&gt;</code></pre></div>
+        </div>
+        <div class="step reveal d1">
+          <span class="num">STEP 2</span>
+          <h3>Create the game handle</h3>
+          <p>The namespace keeps your rooms separate from every other game on the network.</p>
+          <div class="codeblock"><div class="cb-head"><em>game.js</em><button class="copy">copy</button></div>
+<pre><code>const game = new Play({
+  game: 'my-awesome-game',
+  playerName: 'ace'
+});</code></pre></div>
+        </div>
+        <div class="step reveal d2">
+          <span class="num">STEP 3</span>
+          <h3>Connect &amp; sync</h3>
+          <p>Auto-match, or host and share a code. Then broadcast state — both sides get it in milliseconds.</p>
+          <div class="codeblock"><div class="cb-head"><em>game.js</em><button class="copy">copy</button></div>
+<pre><code>await game.quickMatch();     // or host() / join('K7XF')
+
+game.onData = (d, from) =&gt; movePaddle(d);
+game.broadcast({ paddleY: 240 });</code></pre></div>
+        </div>
+      </div>
+
+      <p class="how-note reveal">matchmaking order → <b>same network</b> → <b>same country</b> → <b>worldwide</b> ❄</p>
+    </section>
+
+    <!-- ═══════════ STATS ═══════════ -->
+    <section class="reveal">
+      <div class="stats-band">
+        <div class="stat"><div class="n">$<span data-count="0">0</span></div><div class="l">server cost / month</div></div>
+        <div class="stat"><div class="n"><span data-count="1">0</span> file</div><div class="l">entire library</div></div>
+        <div class="stat"><div class="n">&lt;<span data-count="100">0</span>ms</div><div class="l">typical P2P latency</div></div>
+        <div class="stat"><div class="n">∞</div><div class="l">rooms &amp; players</div></div>
+      </div>
+    </section>
+
+    <!-- ═══════════ TEMPLATES ═══════════ -->
+    <section class="section" id="templates">
+      <h2 class="sec-title reveal">Ready-made <span class="grad">templates</span></h2>
+      <p class="sec-sub reveal">Each template is a single HTML file powered by play.js. Open one in two browser tabs and watch it connect to itself. Steal the code freely.</p>
+
+      <div class="cards">
+        <div class="card tpl-card reveal">
+          <div class="ico">🏓</div>
+          <h3>Pong — Multiplayer</h3>
+          <p>Full game: quick match, private room codes, host-authoritative physics, input sync at 30 Hz, particles, screen shake, sounds. The complete reference implementation.</p>
+          <div class="tpl-meta">
+            <a class="btn btn-primary" href="templates/pong.html">▶ Play it</a>
+            <span class="diff">FULL GAME</span>
+          </div>
+        </div>
+        <div class="card tpl-card reveal d1">
+          <div class="ico">💬</div>
+          <h3>Lobby Chat</h3>
+          <p>The "hello world" of networking — join a room, broadcast text messages, live player roster. Perfect first template to dissect.</p>
+          <div class="tpl-meta">
+            <a class="btn btn-ghost" href="templates/chat.html">▶ Open it</a>
+            <span class="diff">BEGINNER</span>
+          </div>
+        </div>
+        <div class="card tpl-card reveal d2">
+          <div class="ico">🧪</div>
+          <h3>Starter Kit</h3>
+          <p>Blank canvas + connection overlay + status log + a ping-echo test button. Your new game starts here — it's all commented.</p>
+          <div class="tpl-meta">
+            <a class="btn btn-ghost" href="templates/starter.html">▶ Inspect</a>
+            <span class="diff">SANDBOX</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ FINAL CTA ═══════════ -->
+    <section class="cta-final glass reveal">
+      <h2>Ship multiplayer <span class="grad">tonight</span>.</h2>
+      <p>The docs take five minutes. The Pong demo takes two. Your game's high score board will thank you.</p>
+      <div class="cta-row" style="justify-content:center">
+        <a class="btn btn-primary btn-lg" href="docs.html">Get Started →</a>
+        <a class="btn btn-ghost btn-lg" href="https://github.com/gefrus112/FrostByte" target="_blank" rel="noopener">★ Star on GitHub</a>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══════════ FOOTER ═══════════ -->
+  <footer>
+    <div class="wrap">
+      <div class="foot">
+        <a class="brand" href="index.html"><span class="flake">❄</span> FrostByte</a>
+        <nav>
+          <a href="docs.html">Docs</a>
+          <a href="templates/pong.html">Pong</a>
+          <a href="templates/chat.html">Chat</a>
+          <a href="templates/starter.html">Starter</a>
+          <a href="https://github.com/gefrus112/FrostByte" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+      <p class="foot-note">no cookies · no tracking · no servers — just frost ❄ MIT License · © 2026 FrostByte contributors</p>
+    </div>
+  </footer>
+
+  <script src="play.js"></script>
+  <script src="js/effects.js"></script>
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FrostByte Starter — Blank Multiplayer Template</title>
+<meta name="description" content="Blank multiplayer starter template powered by FrostByte play.js — connection overlay, status log, echo test.">
+<meta name="theme-color" content="#05070f">
+<link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;❄&lt;/text&gt;&lt;/svg&gt;">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<!--
+  ═══════════════════════════════════════════════════════════════
+  FROSTBYTE STARTER — your new multiplayer game begins here.
+
+  WHAT'S INSIDE
+    • connection overlay   (quick match / host / join)
+    • status + event log   (every lifecycle event, printed)
+    • echo test            (host answers pings → measures RTT)
+    • heavily commented    — read top to bottom, then build.
+
+  Open this page in two tabs and quick match both. 🎉
+  ═══════════════════════════════════════════════════════════════
+-->
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: radial-gradient(1200px 700px at 50% -10%, #0e1830 0%, #05070f 60%);
+    color:#e8f6ff; font-family:'Space Grotesk', system-ui, sans-serif;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center;
+  }
+  header { display:flex; align-items:center; gap:14px; padding:16px 24px; width:min(92vw,900px); }
+  .logo { font-weight:700; font-size:18px; } .logo b { color:#22d3ee; }
+  header a { color:#8aa2c0; text-decoration:none; font-size:14px; margin-left:auto; }
+  header a:hover { color:#22d3ee; }
+  main { width:min(92vw,900px); display:grid; gap:14px; margin-bottom:40px; }
+  .box { border:1px solid rgba(125,211,252,.22); border-radius:16px; background:rgba(13,20,38,.6); padding:20px; }
+  .box h2 { font-size:13px; letter-spacing:1.5px; color:#8aa2c0; font-family:'JetBrains Mono',monospace; margin-bottom:12px; }
+  #log { font-family:'JetBrains Mono',monospace; font-size:12.5px; line-height:1.8; max-height:320px; overflow-y:auto; }
+  #log .t { color:#5b7391; margin-right:8px; }
+  #log .ok { color:#34d399; } #log .info { color:#7dd3fc; } #log .bad { color:#f87171; } #log .data { color:#c4b5fd; }
+  .btn {
+    padding:12px 22px; border-radius:11px; border:1px solid rgba(125,211,252,.35);
+    background:rgba(34,211,238,.08); color:#e8f6ff; font-weight:600; font-size:14.5px;
+    cursor:pointer; font-family:inherit; margin:0 8px 8px 0;
+  }
+  .btn:hover { background:rgba(34,211,238,.18); }
+  .btn.primary { background:linear-gradient(135deg,#22d3ee,#3b82f6); color:#04121a; border-color:transparent; }
+  #gate { position:fixed; inset:0; z-index:9; display:grid; place-items:center; background:rgba(4,7,15,.9); backdrop-filter:blur(8px); }
+  #gate.hidden { display:none; }
+  .panel { width:min(88%,420px); text-align:center; background:rgba(13,20,38,.75); border:1px solid rgba(125,211,252,.25); border-radius:18px; padding:34px 30px; }
+  .panel h1 { font-size:24px; margin-bottom:6px; background:linear-gradient(90deg,#22d3ee,#a78bfa); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+  .panel .sub { color:#8aa2c0; font-size:13.5px; margin-bottom:22px; }
+  .row { display:flex; gap:8px; }
+  .row input {
+    flex:1; padding:12px 14px; border-radius:11px; border:1px solid rgba(125,211,252,.3);
+    background:rgba(2,6,17,.6); color:#e8f6ff; outline:none; text-align:center;
+    font-family:'JetBrains Mono',monospace; letter-spacing:4px; text-transform:uppercase;
+  }
+  #status { min-height:20px; margin-top:12px; color:#7dd3fc; font-family:'JetBrains Mono',monospace; font-size:12.5px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">❄ Frost<b>Byte</b> · STARTER</span>
+  <a href="../index.html">← home</a>
+</header>
+
+<main>
+  <div class="box">
+    <h2>CONTROLS</h2>
+    <button class="btn" id="bPing">📡 Send echo ping</button>
+    <button class="btn" id="bBcast">📣 Broadcast test object</button>
+    <button class="btn" id="bPlayers">👥 Log player list</button>
+    <span id="rtt" style="font-family:'JetBrains Mono',monospace;color:#34d399"></span>
+  </div>
+  <div class="box" style="flex:1">
+    <h2>EVENT LOG</h2>
+    <div id="log"></div>
+  </div>
+</main>
+
+<div id="gate">
+  <div class="panel">
+    <h1>❄ STARTER KIT</h1>
+    <p class="sub">blank multiplayer canvas — connect to begin</p>
+    <button class="btn primary" id="bQuick">⚡ Quick Match</button>
+    <div class="row" style="margin:10px 0">
+      <input id="code" maxlength="4" placeholder="CODE">
+      <button class="btn" id="bJoin" style="width:auto;padding:12px 20px">Join</button>
+    </div>
+    <button class="btn" id="bHost">🏠 Create Room</button>
+    <div id="status"></div>
+  </div>
+</div>
+
+<script src="../play.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+
+/* pretty event log */
+function logLine(html, cls) {
+  const d = document.createElement('div');
+  const t = new Date().toLocaleTimeString();
+  d.innerHTML = `<span class="t">${t}</span><span class="${cls || 'info'}">${html}</span>`;
+  $('log').appendChild(d);
+  $('log').scrollTop = 1e9;
+}
+
+/* ═══════ 1. create the game handle ═══════ */
+let game = null, connected = false, isHost = false, pingSeq = 0;
+const pings = {};
+
+function buildGame() {
+  return new Play({
+    game: 'frostbyte-starter',          /* ← rename to your game! */
+
+    onReady: (info) => {
+      connected = true;
+      isHost = info.isHost;
+      $('gate').classList.add('hidden');
+      logLine(`ready · host=${info.isHost} · code=${info.code || '(quick)'} · scope=${info.scope}`, 'ok');
+      logLine(`my id: ${info.me.id}`, 'info');
+    },
+
+    onStatus: (state, detail) => {
+      $('status').textContent = detail;
+      if (state !== 'closed') logLine(`status: ${state} — ${detail}`, 'info');
+    },
+
+    onPlayerJoin: p => logLine(`player join: ${p.name || p.id.slice(0, 10)} ${p.isHost ? '(host)' : ''}`, 'ok'),
+    onPlayerLeave: p => logLine(`player leave: ${p.name || p.id.slice(0, 10)}`, 'bad'),
+
+    /* ═══════ 4. receive data from other players ═══════ */
+    onData: (d, from) => {
+      if (d.t === 'echo' && isHost) {
+        /* host answers pings */
+        game.send({ t: 'echo-ack', seq: d.seq, sent: d.sent }, from.id);
+        return;
+      }
+      if (d.t === 'echo-ack') {
+        const rtt = Math.round(performance.now() - pings[d.seq]);
+        $('rtt').textContent = `last RTT: ${rtt} ms`;
+        logLine(`echo-ack · RTT ${rtt} ms`, 'ok');
+        return;
+      }
+      logLine(`data from ${from.isHost ? 'host' : from.id.slice(0, 8)}: ${JSON.stringify(d).slice(0, 120)}`, 'data');
+    },
+
+    onError: err => logLine(`error: ${err.message}`, 'bad')
+  });
+}
+
+/* ═══════ 2. three ways to connect ═══════ */
+$('bQuick').onclick = () => { game = buildGame(); game.quickMatch().catch(e => logLine(e.message, 'bad')); };
+$('bHost').onclick  = () => { game = buildGame(); game.host().then(({ code }) => logLine(`share this code: ${code}`, 'ok')).catch(e => logLine(e.message, 'bad')); };
+$('bJoin').onclick  = () => {
+  const c = $('code').value.trim().toUpperCase();
+  if (!c) return;
+  game = buildGame();
+  game.join(c).catch(e => logLine(e.message, 'bad'));
+};
+
+/* ═══════ 3. send data ═══════ */
+$('bPing').onclick = () => {
+  if (!connected) return logLine('connect first ❄', 'bad');
+  const seq = ++pingSeq;
+  pings[seq] = performance.now();
+  game.send({ t: 'echo', seq, sent: Date.now() });
+  logLine(`echo ping #${seq} sent`, 'info');
+};
+
+$('bBcast').onclick = () => {
+  if (!connected) return logLine('connect first ❄', 'bad');
+  const payload = { t: 'hello', msg: 'hi from ' + (isHost ? 'host' : 'guest'), at: Date.now() };
+  game.broadcast(payload);
+  logLine(`broadcast: ${JSON.stringify(payload)}`, 'data');
+};
+
+$('bPlayers').onclick = () => {
+  if (!connected) return logLine('connect first ❄', 'bad');
+  logLine('players: ' + JSON.stringify(game.players()), 'data');
+};
+</script>
+</body>
+</html>

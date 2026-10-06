@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FrostByte Pong — Multiplayer Template</title>
+<meta name="description" content="Full multiplayer Pong game powered by FrostByte play.js — quick match, room codes, host-authoritative physics.">
+<meta name="theme-color" content="#05070f">
+<link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;❄&lt;/text&gt;&lt;/svg&gt;">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<!--
+  ═══════════════════════════════════════════════════════════════
+  FROSTBYTE PONG — a complete multiplayer game in one HTML file.
+  Powered by play.js: quick match · private room codes · 30 Hz sync.
+
+  HOW TO PLAY:  open this file in two tabs (or two devices) and
+  press "Quick Match" in both. First to 7 wins.
+
+  ARCHITECTURE: host is authoritative — guests send paddle input,
+  host simulates physics and broadcasts snapshots at ~30 Hz.
+  ═══════════════════════════════════════════════════════════════
+-->
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; }
+  body {
+    background: radial-gradient(1200px 700px at 50% -10%, #0e1830 0%, #05070f 60%);
+    color:#e8f6ff;
+    font-family:'Space Grotesk', system-ui, sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+    min-height:100vh; overflow-x:hidden;
+  }
+  header {
+    width:100%; display:flex; align-items:center; gap:14px;
+    padding:14px 22px; max-width:1000px;
+  }
+  header a { color:#8aa2c0; text-decoration:none; font-size:14px; }
+  header a:hover { color:#22d3ee; }
+  .logo { font-weight:700; font-size:18px; letter-spacing:.4px; }
+  .logo b { color:#22d3ee; }
+  .tag {
+    margin-left:auto; font-family:'JetBrains Mono', monospace; font-size:11.5px;
+    color:#7dd3fc; border:1px solid rgba(125,211,252,.3); border-radius:999px; padding:4px 12px;
+  }
+  .stage {
+    position:relative; width:min(94vw, 920px);
+    border-radius:18px; overflow:hidden;
+    border:1px solid rgba(125,211,252,.22);
+    box-shadow:0 30px 80px rgba(2,6,17,.7), 0 0 40px rgba(34,211,238,.08);
+    background:#060a16;
+  }
+  canvas { display:block; width:100%; height:auto; touch-action:none; }
+  /* ── overlay ── */
+  #overlay {
+    position:absolute; inset:0; display:grid; place-items:center;
+    background:rgba(4,7,15,.82); backdrop-filter:blur(10px);
+    transition:opacity .35s ease; z-index:5;
+  }
+  #overlay.hidden { opacity:0; pointer-events:none; }
+  .panel {
+    width:min(88%, 430px); text-align:center;
+    background:rgba(13,20,38,.72); border:1px solid rgba(125,211,252,.25);
+    border-radius:18px; padding:34px 30px;
+    box-shadow:0 20px 60px rgba(2,6,17,.6);
+  }
+  .panel h1 {
+    font-size:30px; letter-spacing:1px; margin-bottom:6px;
+    background:linear-gradient(90deg,#22d3ee,#a78bfa);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .panel .sub { color:#8aa2c0; font-size:14px; margin-bottom:24px; }
+  .btn {
+    display:block; width:100%; margin:10px 0; padding:13px 18px;
+    border-radius:12px; border:1px solid rgba(125,211,252,.35);
+    background:rgba(34,211,238,.08); color:#e8f6ff;
+    font-family:inherit; font-weight:600; font-size:15.5px; cursor:pointer;
+    transition:all .2s ease;
+  }
+  .btn:hover { background:rgba(34,211,238,.18); box-shadow:0 0 22px rgba(34,211,238,.25); transform:translateY(-1px); }
+  .btn.primary {
+    background:linear-gradient(135deg,#22d3ee,#3b82f6);
+    color:#04121a; border-color:transparent;
+  }
+  .btn.primary:hover { box-shadow:0 6px 26px rgba(34,211,238,.45); }
+  .btn.mini { display:inline-block; width:auto; padding:8px 18px; font-size:13.5px; }
+  .row { display:flex; gap:8px; }
+  .row input {
+    flex:1; padding:12px 14px; border-radius:12px;
+    border:1px solid rgba(125,211,252,.35); background:rgba(2,6,17,.6);
+    color:#e8f6ff; font-family:'JetBrains Mono', monospace;
+    font-size:16px; letter-spacing:4px; text-transform:uppercase; text-align:center;
+    outline:none;
+  }
+  .row input:focus { border-color:#22d3ee; box-shadow:0 0 16px rgba(34,211,238,.3); }
+  #status { min-height:22px; margin-top:14px; color:#7dd3fc; font-family:'JetBrains Mono', monospace; font-size:12.5px; }
+  .bigcode {
+    font-family:'JetBrains Mono', monospace; font-size:44px; font-weight:600; letter-spacing:12px;
+    color:#22d3ee; text-shadow:0 0 24px rgba(34,211,238,.6); margin:10px 0 4px;
+    cursor:pointer; user-select:none;
+  }
+  .hint { color:#8aa2c0; font-size:12.5px; margin-bottom:18px; }
+  .divider { display:flex; align-items:center; gap:12px; color:#5b7391; font-size:11.5px; margin:18px 0 6px; font-family:'JetBrains Mono', monospace; }
+  .divider::before, .divider::after { content:''; flex:1; height:1px; background:rgba(125,211,252,.2); }
+  .win { font-size:22px; margin-bottom:8px; }
+  footer { padding:18px; color:#5b7391; font-size:12.5px; font-family:'JetBrains Mono', monospace; }
+  footer b { color:#7dd3fc; font-weight:400; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">❄ Frost<b>Byte</b> · PONG</span>
+  <span class="tag" id="netTag">not connected</span>
+  <a href="../index.html">← home</a>
+  <a href="../docs.html">docs</a>
+</header>
+
+<div class="stage">
+  <canvas id="cv" width="900" height="540"></canvas>
+
+  <div id="overlay">
+    <div class="panel" id="panel"><!-- injected by JS --></div>
+  </div>
+</div>
+
+<footer>first to 7 · <b>W/S</b> or <b>↑/↓</b> or touch-drag · host = <b style="color:#22d3ee">left</b> paddle · powered by play.js</footer>
+
+<script src="../play.js"></script>
+<script>
+'use strict';
+
+/* ─────────────────────────── constants ─────────────────────────── */
+const W = 900, H = 540, PAD_W = 14, PAD_H = 90, BALL_R = 8, WIN_SCORE = 7;
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const overlay = document.getElementById('overlay');
+const panel   = document.getElementById('panel');
+const netTag  = document.getElementById('netTag');
+
+/* ─────────────────────────── game state ────────────────────────── */
+let game = null;                 // FrostByte handle
+let isHost = false, myId = null;
+let role = 'spectator';          // 'left' | 'right' | 'spectator'
+let opponentName = '';
+
+/* host-side authoritative world */
+const world = {
+  phase: 'count', countT: 3 * 60,          // 3s countdown at 60fps
+  ball: { x: W/2, y: H/2, vx: 0, vy: 0 },
+  pads: { l: H/2, r: H/2 },
+  score: { l: 0, r: 0 },
+  ctrlR: null,                              // first guest gets the right paddle
+  fxSeq: 0, fxKind: '', fxX: 0, fxY: 0,
+  winner: ''
+};
+
+/* guest-side smoothed view */
+const view = {
+  phase:'menu', countT:180, ball:{x:W/2,y:H/2}, pads:{l:H/2,r:H/2},
+  score:{l:0,r:0}, winner:'', lastFxSeq:0
+};
+let prevSnap = null, curSnap = null, snapTime = 0;
+
+/* fx */
+let particles = [], shakeT = 0, trail = [];
+let soundOn = true, audioCtx = null;
+
+/* input */
+const keys = {};
+let touchY = null;
+
+/* ═════════════════════════ AUDIO ════════════════════════════════ */
+function beep(freq, dur = 0.06, type = 'square', vol = 0.08) {
+  if (!soundOn) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + dur);
+  } catch (e) {}
+}
+
+/* ═════════════════════════ OVERLAY UI ═══════════════════════════ */
+const UI = {
+  menu() {
+    panel.innerHTML = `
+      <h1>FROSTBYTE PONG</h1>
+      <p class="sub">multiplayer · free · peer-to-peer</p>
+      <button class="btn primary" id="bQuick">⚡ Quick Match<br><small style="font-weight:400">find a player near you</small></button>
+      <div class="divider">or private room</div>
+      <button class="btn" id="bHost">🏠 Create Room</button>
+      <div class="row">
+        <input id="inCode" maxlength="4" placeholder="CODE" autocomplete="off">
+        <button class="btn" id="bJoin" style="width:auto;padding:12px 22px">Join</button>
+      </div>
+      <div id="status"></div>`;
+    document.getElementById('bQuick').onclick = () => connect('quick');
+    document.getElementById('bHost').onclick  = () => connect('host');
+    document.getElementById('bJoin').onclick  = () => {
+      const c = document.getElementById('inCode').value.trim().toUpperCase();
+      if (c) connect('join', c);
+    };
+  },
+
+  connecting(msg) {
+    panel.innerHTML = `
+      <h1>CONNECTING</h1>
+      <p class="sub">the frost is forming…</p>
+      <div id="status">${msg || ''}</div>
+      <button class="btn mini" id="bCancel">← back</button>`;
+    document.getElementById('bCancel').onclick = () => location.reload();
+  },
+
+  waiting(code) {
+    panel.innerHTML = `
+      <h1>ROOM OPEN</h1>
+      <p class="sub">share this code with your friend:</p>
+      <div class="bigcode" id="bigCode" title="click to copy">${code}</div>
+      <p class="hint">they open this same page → “Join” → type the code</p>
+      <div id="status">waiting for a challenger…</div>
+      <button class="btn mini" id="bCancel">← cancel</button>`;
+    document.getElementById('bigCode').onclick = () => {
+      navigator.clipboard && navigator.clipboard.writeText(code);
+      const el = document.getElementById('bigCode');
+      el.style.color = '#34d399'; setTimeout(() => el.style.color = '', 800);
+    };
+    document.getElementById('bCancel').onclick = () => location.reload();
+  },
+
+  setStatus(txt) {
+    const s = document.getElementById('status');
+    if (s) s.textContent = txt;
+  },
+
+  hide() { overlay.classList.add('hidden'); },
+  show() { overlay.classList.remove('hidden'); },
+
+  end(winnerIsMe) {
+    panel.innerHTML = `
+      <div class="win">${winnerIsMe ? '🏆' : '💀'} ${winnerIsMe ? 'YOU WIN!' : 'YOU LOSE'}</div>
+      <p class="sub">${view.score.l} — ${view.score.r}</p>
+      ${isHost
+        ? '<button class="btn primary" id="bRe">🔄 Rematch</button>'
+        : '<p class="hint" style="margin-bottom:14px">waiting for the host to rematch…</p>'}
+      <button class="btn mini" id="bMenu">← main menu</button>`;
+    document.getElementById('bMenu').onclick = () => location.reload();
+    if (isHost) document.getElementById('bRe').onclick = () => {
+      UI.hide();
+      resetWorld();
+    };
+    UI.show();
+  },
+
+  left() {
+    panel.innerHTML = `
+      <div class="win">👋</div>
+      <p class="sub">opponent left the arena</p>
+      <button class="btn mini" id="bMenu">← main menu</button>`;
+    document.getElementById('bMenu').onclick = () => location.reload();
+    UI.show();
+  },
+
+  waitingMatch() {
+    panel.innerHTML = `
+      <h1>MATCHMAKING</h1>
+      <p class="sub">you're hosting the next match — players searching<br>your network / country will find you automatically</p>
+      <div id="status">waiting for a challenger…</div>
+      <button class="btn mini" id="bCancel">← cancel</button>`;
+    document.getElementById('bCancel').onclick = () => location.reload();
+  },
+
+  error(msg) {
+    panel.innerHTML = `
+      <div class="win">❄️</div>
+      <p class="sub">${msg}</p>
+      <button class="btn mini" id="bMenu">← try again</button>`;
+    document.getElementById('bMenu').onclick = () => location.reload();
+    UI.show();
+  }
+};
+
+/* ═════════════════════════ CONNECTION ═══════════════════════════ */
+function connect(mode, code) {
+  beep(660, .05);
+  UI.connecting(mode === 'quick' ? 'searching for players…' : 'connecting…');
+
+  game = new Play({
+    game: 'frostbyte-pong',
+    onStatus: (state, detail) => UI.setStatus(detail),
+    onReady:  (info) => {
+      isHost = info.isHost;
+      myId   = info.me.id;
+      role   = isHost ? 'left' : 'spectator';   // upgraded when a host joins
+      netTag.textContent = info.scope === 'private'
+        ? 'room ' + (info.code || '')
+        : 'matched · ' + (info.scope || 'quick');
+      if (isHost && info.code) UI.waiting(info.code);
+    },
+    onPlayerJoin: (p) => {
+      if (!isHost) return;
+      opponentName = p.name;
+      if (!world.ctrlR) world.ctrlR = p.id;
+      if (!game._matchStarted) {
+        game._matchStarted = true;
+        role = 'left';
+        resetWorld();
+        UI.hide();
+      }
+    },
+    onPlayerLeave: () => {
+      if (view.phase !== 'menu') { beep(220, .3, 'sawtooth'); UI.left(); }
+    },
+    onData: onData,
+    onError: (err) => {
+      if (view.phase === 'menu' || view.phase === 'count') UI.error(err.message);
+      else UI.left();
+    }
+  });
+
+  if (mode === 'quick') game.quickMatch().then((r) => {
+    if (r.isHost) { role = 'left'; UI.waitingMatch(); }
+    else role = 'right';                       // matched as guest → right paddle
+  }).catch(e => UI.error(e.message));
+
+  if (mode === 'host') game.host().then(({ code }) => { UI.waiting(code); })
+                             .catch(e => UI.error(e.message));
+
+  if (mode === 'join') game.join(code).then(() => {
+    role = 'right';
+    UI.setStatus('connected! waiting for the host…');
+    /* the first world snapshot hides this overlay */
+  }).catch(e => UI.error(e.message));
+}
+
+/* ═════════════════════════ DATA FLOW ════════════════════════════ */
+function onData(d, from) {
+  if (d.t === 'p' && isHost && from.id === world.ctrlR) {
+    world.pads.r = clamp(d.y, PAD_H/2, H - PAD_H/2);     // guest input
+  }
+  if (d.t === 's' && !isHost) {
+    applySnapshot(d);                                     // world snapshot
+  }
+}
+
+function resetWorld() {
+  world.phase = 'count'; world.countT = 3 * 60;
+  world.ball = { x: W/2, y: H/2, vx: 0, vy: 0 };
+  world.pads = { l: H/2, r: H/2 };
+  world.score = { l: 0, r: 0 };
+  world.winner = '';
+  serve(1);
+}
+
+function serve(dir) {
+  world.ball.x = W/2; world.ball.y = H/2;
+  const speed = 6.2;
+  const ang = (Math.random() * 0.6 - 0.3);
+  world.ball.vx = dir * speed * Math.cos(ang);
+  world.ball.vy = speed * Math.sin(ang);
+}
+
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+/* ═════════════════════════ INPUT ════════════════════════════════ */
+addEventListener('keydown', e => { keys[e.key] = true; });
+addEventListener('keyup',   e => { keys[e.key] = false; });
+
+cv.addEventListener('pointerdown', e => { touchY = evY(e); cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointermove', e => { if (touchY !== null) touchY = evY(e); });
+cv.addEventListener('pointerup',   () => { touchY = null; });
+function evY(e) {
+  const r = cv.getBoundingClientRect();
+  return (e.clientY - r.top) / r.height * H;
+}
+
+/* my paddle target position, computed from input */
+function myTargetY() {
+  if (touchY !== null) return touchY;
+  const spd = 9;
+  let y = null;
+  if (keys['w'] || keys['ArrowUp'])   y = (role === 'left' ? world.pads.l : view.pads.r) - spd;
+  if (keys['s'] || keys['ArrowDown']) y = (role === 'left' ? world.pads.l : view.pads.r) + spd;
+  return y;
+}
+
+/* guests ship their input to the host at ~30 Hz */
+setInterval(() => {
+  if (!game || isHost || (role !== 'right')) return;
+  const y = myTargetY();
+  if (y !== null && y !== undefined) game.send({ t: 'p', y });
+}, 33);
+
+/* ═════════════════════════ HOST PHYSICS ═════════════════════════ */
+function stepWorld() {
+  if (world.phase === 'count') {
+    if (--world.countT <= 0) { world.phase = 'play'; beep(880, .12); }
+    return;
+  }
+  if (world.phase !== 'play') return;
+
+  /* host paddle (keyboard / touch) */
+  const my = myTargetY();
+  if (my !== null && my !== undefined) world.pads.l = clamp(my, PAD_H/2, H - PAD_H/2);
+
+  /* ball */
+  const b = world.ball;
+  b.x += b.vx; b.y += b.vy;
+
+  if (b.y < BALL_R)      { b.y = BALL_R;      b.vy =  Math.abs(b.vy); fx('wall', b.x, b.y); }
+  if (b.y > H - BALL_R)  { b.y = H - BALL_R;  b.vy = -Math.abs(b.vy); fx('wall', b.x, b.y); }
+
+  /* paddle collisions */
+  if (b.vx < 0 && b.x - BALL_R < 26 + PAD_W && b.x > 20 &&
+      Math.abs(b.y - world.pads.l) < PAD_H/2 + BALL_R) {
+    b.x = 26 + PAD_W + BALL_R;
+    b.vx = Math.abs(b.vx) * 1.045;
+    b.vy += (b.y - world.pads.l) * 0.09;
+    fx('paddle', b.x, b.y);
+  }
+  if (b.vx > 0 && b.x + BALL_R > W - 26 - PAD_W && b.x < W - 20 &&
+      Math.abs(b.y - world.pads.r) < PAD_H/2 + BALL_R) {
+    b.x = W - 26 - PAD_W - BALL_R;
+    b.vx = -Math.abs(b.vx) * 1.045;
+    b.vy += (b.y - world.pads.r) * 0.09;
+    fx('paddle', b.x, b.y);
+  }
+
+  /* scoring */
+  if (b.x < -30)  { world.score.r++; fx('score', 0, b.y); endCheck(); serve(1);  }
+  if (b.x > W+30) { world.score.l++; fx('score', W, b.y); endCheck(); serve(-1); }
+}
+
+function fx(kind, x, y) {
+  world.fxSeq++; world.fxKind = kind; world.fxX = x; world.fxY = y;
+  if (kind === 'paddle') beep(520, .05);
+  if (kind === 'wall')   beep(340, .04);
+  if (kind === 'score')  { beep(180, .35, 'sawtooth', .1); shakeT = 14; }
+}
+
+function endCheck() {
+  if (world.score.l >= WIN_SCORE) { world.phase = 'over'; world.winner = 'l'; }
+  if (world.score.r >= WIN_SCORE) { world.phase = 'over'; world.winner = 'r'; }
+}
+
+/* host broadcasts snapshots at ~30 Hz */
+setInterval(() => {
+  if (!game || !isHost || !game._matchStarted) return;
+  game.broadcast({
+    t:'s', ph: world.phase, ct: world.countT,
+    bx: Math.round(world.ball.x*10)/10, by: Math.round(world.ball.y*10)/10,
+    l: Math.round(world.pads.l), r: Math.round(world.pads.r),
+    sl: world.score.l, sr: world.score.r,
+    fs: world.fxSeq, fk: world.fxKind, fx: Math.round(world.fxX), fy: Math.round(world.fxY),
+    w: world.winner
+  });
+}, 33);
+
+/* ═══════════════════════ GUEST SNAPSHOT ═════════════════════════ */
+function applySnapshot(s) {
+  prevSnap = curSnap || s;
+  curSnap = s;
+  snapTime = performance.now();
+
+  view.phase = s.ph; view.countT = s.ct;
+  view.score.l = s.sl; view.score.r = s.sr;
+  view.winner = s.w;
+
+  if (s.fs !== view.lastFxSeq) {
+    view.lastFxSeq = s.fs;
+    if (s.fk === 'paddle') { burst(s.fx, s.fy, '#7dd3fc', 10); beep(520, .05); }
+    if (s.fk === 'wall')   beep(340, .04);
+    if (s.fk === 'score')  { burst(s.fx, s.fy, '#f472b6', 26); shakeT = 14; beep(180, .35, 'sawtooth', .1); }
+  }
+
+  /* first live snapshot (or a rematch) → drop the overlay */
+  if (s.ph !== 'over' && !overlay.classList.contains('hidden')) UI.hide();
+}
+
+/* ═════════════════════════ PARTICLES ════════════════════════════ */
+function burst(x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, sp = Math.random() * 4 + 1;
+    particles.push({ x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp, life: 1, color });
+  }
+}
+
+/* ═════════════════════════ MAIN LOOP ════════════════════════════ */
+function frame() {
+  /* ── host simulates ── */
+  if (isHost && game && game._matchStarted) stepWorld();
+
+  /* ── interpolate guest view ── */
+  let bx, by, pl, pr, phase, countT;
+  if (isHost) {
+    bx = world.ball.x; by = world.ball.y;
+    pl = world.pads.l; pr = world.pads.r;
+    phase = world.phase; countT = world.countT;
+  } else if (curSnap) {
+    const t = Math.min((performance.now() - snapTime) / 33, 1);
+    const p = prevSnap || curSnap, c = curSnap;
+    bx = lerp(p.bx, c.bx, t); by = lerp(p.by, c.by, t);
+    pl = lerp(p.l, c.l, t);   pr = lerp(p.r, c.r, t);
+    phase = view.phase; countT = view.countT;
+  } else {
+    bx = W/2; by = H/2; pl = H/2; pr = H/2; phase = 'menu'; countT = 0;
+  }
+
+  /* fx triggers on host too */
+  if (isHost && curFxs !== world.fxSeq) {
+    curFxs = world.fxSeq;
+    if (world.fxKind === 'paddle') burst(world.fxX, world.fxY, '#7dd3fc', 10);
+    if (world.fxKind === 'score')  burst(world.fxX, world.fxY, '#f472b6', 26);
+  }
+
+  /* game-over overlay (fires once — only while overlay is hidden) */
+  if (phase === 'over' && overlay.classList.contains('hidden')) {
+    const win = isHost ? world.winner : view.winner;
+    const iWin = (win === 'l') === (role === 'left');
+    UI.end(iWin);
+  }
+
+  render(bx, by, pl, pr, phase, countT);
+  requestAnimationFrame(frame);
+}
+
+let curFxs = 0;
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+/* ═════════════════════════ RENDER ═══════════════════════════════ */
+function render(bx, by, pl, pr, phase, countT) {
+  /* DPR-aware sizing (once) */
+  if (!cv._dpr) {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    cv.width = W * dpr; cv.height = H * dpr;
+    cv.getContext('2d').scale(dpr, dpr);
+    cv._dpr = dpr;
+  }
+
+  ctx.save();
+  if (shakeT > 0) {
+    shakeT--;
+    ctx.translate((Math.random()-.5) * shakeT * .8, (Math.random()-.5) * shakeT * .8);
+  }
+
+  /* background */
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#081020'); g.addColorStop(1, '#05070f');
+  ctx.fillStyle = g; ctx.fillRect(-20, -20, W + 40, H + 40);
+
+  /* subtle grid */
+  ctx.strokeStyle = 'rgba(125,211,252,.05)'; ctx.lineWidth = 1;
+  for (let x = 0; x <= W; x += 45) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y <= H; y += 45) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+  /* center line */
+  ctx.setLineDash([10, 14]);
+  ctx.strokeStyle = 'rgba(125,211,252,.25)'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H); ctx.stroke();
+  ctx.setLineDash([]);
+
+  /* trail */
+  if (phase === 'play') {
+    trail.push({ x: bx, y: by });
+    if (trail.length > 14) trail.shift();
+  } else if (phase === 'count') trail.length = 0;
+  trail.forEach((p, i) => {
+    ctx.globalAlpha = (i / trail.length) * .3;
+    ctx.fillStyle = '#22d3ee';
+    ctx.beginPath(); ctx.arc(p.x, p.y, BALL_R * (i / trail.length) * .9, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  /* particles */
+  particles = particles.filter(p => p.life > 0);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy; p.vy += .06; p.life -= .03;
+    ctx.globalAlpha = Math.max(p.life, 0);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+  });
+  ctx.globalAlpha = 1;
+
+  /* paddles */
+  glowRect(26, pl - PAD_H/2, PAD_W, PAD_H, '#22d3ee');
+  glowRect(W - 26 - PAD_W, pr - PAD_H/2, PAD_W, PAD_H, '#a78bfa');
+
+  /* ball */
+  if (phase !== 'menu') {
+    ctx.shadowColor = '#e8f6ff'; ctx.shadowBlur = 18;
+    ctx.fillStyle = '#e8f6ff';
+    ctx.beginPath(); ctx.arc(bx, by, BALL_R, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  /* scores */
+  ctx.font = "700 64px 'JetBrains Mono', monospace";
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(34,211,238,.75)';
+  ctx.fillText(isHost ? world.score.l : view.score.l, W/2 - 90, 78);
+  ctx.fillStyle = 'rgba(167,139,250,.75)';
+  ctx.fillText(isHost ? world.score.r : view.score.r, W/2 + 90, 78);
+
+  /* countdown */
+  if (phase === 'count' && game && game._matchStarted) {
+    const n = Math.ceil(countT / 60);
+    ctx.font = "700 110px 'Space Grotesk', sans-serif";
+    ctx.fillStyle = 'rgba(232,246,255,.9)';
+    ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 30;
+    ctx.fillText(n > 0 ? n : 'GO', W/2, H/2 + 38);
+    ctx.shadowBlur = 0;
+  }
+
+  /* role hint */
+  if (game && game._matchStarted) {
+    ctx.font = "600 13px 'JetBrains Mono', monospace";
+    ctx.fillStyle = 'rgba(138,162,192,.8)';
+    const txt = role === 'spectator' ? '▣ spectating' : (role === 'left' ? '◀ you · W/S' : 'you ▶ · ↑/↓');
+    ctx.fillText(txt, W/2, H - 16);
+  }
+
+  ctx.restore();
+}
+
+function glowRect(x, y, w, h, color) {
+  ctx.shadowColor = color; ctx.shadowBlur = 16;
+  ctx.fillStyle = color;
+  const r = 7;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+/* ── boot ── */
+UI.menu();
+frame();
+
+addEventListener('pagehide', () => { if (game) game.close(); });
+
+</script>
+</body>
+</html>

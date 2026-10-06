@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Docs — FrostByte play.js</title>
+  <meta name="description" content="FrostByte play.js documentation: install, connect, host, join, quickMatch, send, broadcast, events and matchmaking.">
+  <meta name="theme-color" content="#05070f">
+  <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;❄&lt;/text&gt;&lt;/svg&gt;">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <canvas id="snow"></canvas>
+  <div class="aurora"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+  <div class="grid-overlay"></div>
+
+  <header class="nav glass">
+    <a class="brand" href="index.html"><span class="flake">❄</span> FrostByte <span class="brand-sub">play.js</span></a>
+    <nav class="tabs">
+      <a class="tab" href="index.html">Home</a>
+      <a class="tab active" href="docs.html">Docs</a>
+      <a class="tab" href="templates/pong.html">Templates</a>
+      <a class="tab" href="https://github.com/gefrus112/FrostByte" target="_blank" rel="noopener">GitHub ↗</a>
+    </nav>
+    <a class="btn btn-primary nav-cta" href="#start">Get Started</a>
+  </header>
+
+  <main class="wrap docs">
+
+    <!-- ═══════════ SIDEBAR ═══════════ -->
+    <aside class="docs-nav glass">
+      <div class="group">Begin</div>
+      <a href="#start">Getting started</a>
+      <a href="#concepts">Core concepts</a>
+      <div class="group">API</div>
+      <a href="#constructor">Constructor</a>
+      <a href="#methods">Methods</a>
+      <a href="#events">Events</a>
+      <a href="#statics">Static helpers</a>
+      <div class="group">Guides</div>
+      <a href="#matchmaking">Matchmaking</a>
+      <a href="#patterns">Data patterns</a>
+      <a href="#selfhost">Self-hosting</a>
+      <div class="group">Help</div>
+      <a href="#faq">FAQ</a>
+      <a href="#trouble">Troubleshooting</a>
+    </aside>
+
+    <!-- ═══════════ CONTENT ═══════════ -->
+    <div class="docs-body">
+
+      <!-- ───────── GETTING STARTED ───────── -->
+      <section id="start">
+        <h2>Getting started <span class="anchor">2 min</span></h2>
+        <p>
+          FrostByte connects players <strong>browser-to-browser over WebRTC</strong>. There is no server to rent,
+          no API key to paste and no account to create. The only thing you add to your game is one
+          <code>&lt;script&gt;</code> tag — after that, your page effectively <em>becomes</em> the live server.
+          This page shows every step of connecting a game with JavaScript.
+        </p>
+
+        <h3>1 · Include play.js</h3>
+        <p>Put this tag in your HTML <strong>before</strong> your game code. The WebRTC engine (PeerJS) loads itself on demand from a CDN, with an automatic jsDelivr fallback.</p>
+        <div class="codeblock"><div class="cb-head"><em>index.html</em><button class="copy">copy</button></div>
+<pre><code>&lt;script src="https://gefrus112.github.io/FrostByte/play.js"&gt;&lt;/script&gt;</code></pre></div>
+
+        <h3>2 · Create a game handle</h3>
+        <p>
+          The <code>game</code> namespace isolates your rooms from every other FrostByte game in the world,
+          so pick something unique, like your game's name. All other options are optional.
+        </p>
+        <div class="codeblock"><div class="cb-head"><em>game.js</em><button class="copy">copy</button></div>
+<pre><code>const game = new Play({
+  game: 'my-unique-game',     // your namespace (required)
+  playerName: 'ace',          // nickname other players see
+  debug: true                 // console logs while developing
+});</code></pre></div>
+
+        <h3>3 · Connect</h3>
+        <p>Three ways in — auto-matchmaking for strangers, or private room codes for friends:</p>
+        <div class="codeblock"><div class="cb-head"><em>game.js</em><button class="copy">copy</button></div>
+<pre><code>// A) auto matchmaking — same network → same country → worldwide
+await game.quickMatch();
+
+// B) host a private room, share the 4-char code
+const { code } = await game.host();      // e.g. "K7XF"
+
+// C) join a friend's room
+await game.join('K7XF');</code></pre></div>
+
+        <h3>4 · Sync your game</h3>
+        <p>Send anything JSON-serializable. The <code>data</code> event fires on every other player's side, in milliseconds:</p>
+        <div class="codeblock"><div class="cb-head"><em>game.js</em><button class="copy">copy</button></div>
+<pre><code>game.onData = (data, from) =&gt; {
+  // from = { id, isHost }
+  if (data.type === 'move') movePlayer(from.id, data.x, data.y);
+};
+
+// broadcast to everyone (host → all, guest → everyone via relay)
+game.broadcast({ type: 'move', x: 128, y: 240 });</code></pre></div>
+
+        <div class="callout ok">
+          <b>That's the whole integration.</b> Open your game in two browser tabs (or send the link to a friend),
+          press quick match in both — you're playing multiplayer. Check the <a href="templates/pong.html">Pong template</a>
+          for a complete, working reference.
+        </div>
+      </section>
+
+      <!-- ───────── CORE CONCEPTS ───────── -->
+      <section id="concepts">
+        <h2>Core concepts <span class="anchor">architecture</span></h2>
+        <ul>
+          <li><strong>Host &amp; guests (star topology).</strong> Every room has one host. Guests talk to the host; the host relays guest→guest traffic. For 2-player games this is invisible — it just feels direct.</li>
+          <li><strong>Signaling vs. game data.</strong> The free public broker is used <em>only</em> to exchange connection offers (signaling). Once the WebRTC data channel opens, <strong>all game data flows directly between browsers</strong> — never through a server.</li>
+          <li><strong>Room codes.</strong> <code>host()</code> mints a 4-character code from a confusion-free alphabet (no <code>0/O/1/I/L</code>). The code maps to a namespaced broker id, so different games can't collide.</li>
+          <li><strong>Heartbeats.</strong> The host pings every 3 s and prunes silent players after ~11 s; guests monitor the host symmetrically and raise an <code>error</code> event when the link dies.</li>
+          <li><strong>Serializable payloads.</strong> Anything JSON-serializable works — plain objects, arrays, numbers, strings. Send small state diffs at 20–30 Hz for smooth gameplay.</li>
+        </ul>
+      </section>
+
+      <!-- ───────── CONSTRUCTOR ───────── -->
+      <section id="constructor">
+        <h2>Constructor <span class="anchor">new Play(opts)</span></h2>
+        <p><code>Play</code> works with or without <code>new</code>: <code>new Play({...})</code> and <code>Play({...})</code> are identical. The brand alias <code>FrostByte</code> points to the same object.</p>
+        <table class="api-table">
+          <thead><tr><th>Option</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>game</td><td>string</td><td><strong>Required.</strong> Your namespace, e.g. <code>'pong'</code>. Lowercase letters, digits, <code>-</code>, <code>_</code>. Rooms never collide between different namespaces.</td></tr>
+            <tr><td>playerName</td><td>string</td><td>Nickname shown in the roster and join events (max 16 chars).</td></tr>
+            <tr><td>debug</td><td>boolean</td><td>Verbose <code>console</code> logging of every status change.</td></tr>
+            <tr><td>peerConfig</td><td>object</td><td>Self-hosted signaling broker config, e.g. <code>{ host:'broker.me', port:443, path:'/', secure:true }</code>. See <a href="#selfhost">Self-hosting</a>.</td></tr>
+            <tr><td>onReady / onStatus / onData / onPlayerJoin / onPlayerLeave / onError</td><td>function</td><td>Shortcut event handlers — same as calling <code>game.on(event, fn)</code>. See <a href="#events">Events</a>.</td></tr>
+          </tbody>
+        </table>
+        <div class="codeblock"><div class="cb-head"><em>full example</em><button class="copy">copy</button></div>
+<pre><code>const game = new Play({
+  game: 'space-hockey',
+  playerName: 'nova',
+  onReady:    ({ isHost, code, scope }) =&gt; console.log('connected!', isHost, code, scope),
+  onStatus:   (state, detail) =&gt; hud.textContent = detail,
+  onPlayerJoin: p =&gt; console.log(p.name, 'joined'),
+  onPlayerLeave: p =&gt; console.log(p.name, 'left'),
+  onData:     (d, from) =&gt; applyState(d, from),
+  onError:    err =&gt; showError(err.message)
+});</code></pre></div>
+      </section>
+
+      <!-- ───────── METHODS ───────── -->
+      <section id="methods">
+        <h2>Methods <span class="anchor">game.*</span></h2>
+        <table class="api-table">
+          <thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>quickMatch()</td><td>Promise&lt;{ isHost, scope }&gt;</td><td>Auto-matchmaking: probes "same network" → "same country" → "worldwide" slots, then hosts one if empty. See <a href="#matchmaking">Matchmaking</a>.</td></tr>
+            <tr><td>host()</td><td>Promise&lt;{ code }&gt;</td><td>Opens a private room and resolves with its 4-char code. You are the host; share the code.</td></tr>
+            <tr><td>join(code)</td><td>Promise&lt;{ code }&gt;</td><td>Joins a private room. Throws (with a friendly message) if the room doesn't exist.</td></tr>
+            <tr><td>send(data, toId?)</td><td>void</td><td>Host: broadcast to all, or to one guest with <code>toId</code>. Guest: to everyone (relayed), or private to one player with <code>toId</code>.</td></tr>
+            <tr><td>broadcast(data)</td><td>void</td><td>Alias of <code>send(data)</code> — reads nicer when you always mean "everyone".</td></tr>
+            <tr><td>players()</td><td>Array</td><td>Live roster: <code>[{ id, isHost, name }]</code>, host first.</td></tr>
+            <tr><td>close()</td><td>void</td><td>Leaves/destroys the room, clears timers. Call on <code>beforeunload</code> for instant leave.</td></tr>
+          </tbody>
+        </table>
+        <p>Handy properties: <code>game.isHost</code> (boolean), <code>game.code</code> (room code or <code>null</code> in quick match), <code>game.me</code> (<code>{ id, isHost, name }</code>), <code>game.version</code>.</p>
+      </section>
+
+      <!-- ───────── EVENTS ───────── -->
+      <section id="events">
+        <h2>Events <span class="anchor">game.on(...)</span></h2>
+        <table class="api-table">
+          <thead><tr><th>Event</th><th>Payload</th><th>Fires when…</th></tr></thead>
+          <tbody>
+            <tr><td>ready</td><td>{ isHost, code, me, scope }</td><td>The connection is live: room open (host) or joined (guest). <code>scope</code> is <code>'private'</code> or the matchmaking scope that hit.</td></tr>
+            <tr><td>status</td><td>(state, detail)</td><td>Progress updates: <code>region → searching → waiting → joining → connected → hosting → disconnected</code>. Drive your HUD from this.</td></tr>
+            <tr><td>playerjoin</td><td>{ id, isHost, name }</td><td>A player finished joining (both sides see it).</td></tr>
+            <tr><td>playerleave</td><td>{ id, isHost, name }</td><td>A player left or timed out.</td></tr>
+            <tr><td>data</td><td>(data, from)</td><td><code>send</code>/<code>broadcast</code> arrived. <code>from = { id, isHost }</code>; <code>from.id === 'host'</code> for host-origin messages.</td></tr>
+            <tr><td>error</td><td>Error</td><td>Connection problems (host lost, broker down, room not found). <code>err.message</code> is human-readable.</td></tr>
+          </tbody>
+        </table>
+        <div class="codeblock"><div class="cb-head"><em>events</em><button class="copy">copy</button></div>
+<pre><code>game.on('status', (state, detail) =&gt; {
+  if (state === 'searching') splash.textContent = detail;  // "looking for players · US"
+});
+game.on('data', (d, from) =&gt; console.log('got', d, 'from', from.id));</code></pre></div>
+      </section>
+
+      <!-- ───────── STATICS ───────── -->
+      <section id="statics">
+        <h2>Static helpers <span class="anchor">Play.*</span></h2>
+        <table class="api-table">
+          <thead><tr><th>Helper</th><th>Returns</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>Play.region()</td><td>Promise&lt;{ ip, country, network }&gt;</td><td>Your public IP, ISO country code and a hashed network fingerprint (cached after first call).</td></tr>
+            <tr><td>Play.isSupported()</td><td>boolean</td><td>Does this browser support WebRTC? If false, show a "use a modern browser" screen.</td></tr>
+            <tr><td>Play.version</td><td>string</td><td>Library version, e.g. <code>'1.0.0'</code>.</td></tr>
+          </tbody>
+        </table>
+        <div class="codeblock"><div class="cb-head"><em>region check</em><button class="copy">copy</button></div>
+<pre><code>const reg = await Play.region();
+console.log(reg.country);   // "US"
+console.log(reg.network);   // "k3f9x2a1" — same value for same-router players</code></pre></div>
+      </section>
+
+      <!-- ───────── MATCHMAKING ───────── -->
+      <section id="matchmaking">
+        <h2>Matchmaking <span class="anchor">quickMatch()</span></h2>
+        <p>
+          FrostByte's matchmaking is <strong>fully serverless</strong> — it works by probing short, deterministic
+          room ids on the free broker, so there is no matchmaker service to run or pay for. When you call
+          <code>quickMatch()</code>, the library:
+        </p>
+        <ol>
+          <li><strong>Detects your region</strong> — public IP, country code, and a fingerprint of your network (<code>hash(ip)</code>).</li>
+          <li><strong>Scans "same network" slots first.</strong> Players behind the same router share the fingerprint, so two tabs on your Wi-Fi match instantly with near-zero latency. Great for couch-style testing.</li>
+          <li><strong>Then scans your country's slots</strong> (e.g. every US quick-matcher probes the same 5 slot ids), keeping matches local and low-latency.</li>
+          <li><strong>Falls back to worldwide slots</strong> so matchmaking always eventually finds someone.</li>
+          <li><strong>If nobody is waiting, you become the host</strong> of the first free slot. The next searcher connects to you — usually within seconds. Status events tell you exactly where the search is: <code>"looking for players · same network"</code> → <code>"… · US"</code> → <code>"… · worldwide"</code> → <code>"waiting for a challenger · US"</code>.</li>
+        </ol>
+        <div class="codeblock"><div class="cb-head"><em>matchmaking HUD</em><button class="copy">copy</button></div>
+<pre><code>await game.quickMatch();
+// → status events while searching:
+//    region     "checking your region…"
+//    searching  "looking for players · same network"
+//    searching  "looking for players · US"
+//    searching  "looking for players · worldwide"
+//    waiting    "waiting for a challenger · US"   (you are the host now)
+// → 'ready' event when matched:
+//    { isHost: false, code: null, scope: 'same network' }</code></pre></div>
+
+        <h3>Limitations (honest ones)</h3>
+        <ul>
+          <li><strong>Two simultaneous first-searchers</strong> can both fail to find each other (both scan, nobody hosts yet) and end up hosting separate slots. The next pair will match fine. For tournaments, prefer <code>host()</code> + codes.</li>
+          <li><strong>Country matching is best-effort</strong> — it's IP geolocation, not GPS. VPNs put you in another country; that's a feature if you want worldwide matches.</li>
+          <li><strong>"Same network"</strong> means "same public IP". Big carrier-grade NATs (mobile networks) may group strangers together — rare, and harmless: worst case you play a Pong with a neighbour.</li>
+        </ul>
+        <div class="callout">
+          <b>Tip:</b> show the scope in your UI ("matched · same network 🎉"). Players love knowing the match is local — and it sets expectations for latency.
+        </div>
+      </section>
+
+      <!-- ───────── PATTERNS ───────── -->
+      <section id="patterns">
+        <h2>Data patterns <span class="anchor">recipes</span></h2>
+
+        <h3>Guest → host input, host → all state</h3>
+        <p>The classic real-time pattern (used by the Pong template): guests send only their inputs; the host simulates the world and broadcasts snapshots.</p>
+        <div class="codeblock"><div class="cb-head"><em>authoritative host</em><button class="copy">copy</button></div>
+<pre><code>// GUEST — send input at ~30 Hz
+setInterval(() =&gt; game.send({ t: 'pad', y: myPaddleY }), 33);
+
+// HOST — simulate + broadcast at ~30 Hz
+setInterval(() =&gt; {
+  stepPhysics(guestPadY);
+  game.broadcast({ t: 's', ball, pads, score });
+}, 33);
+
+// GUEST — render from snapshots
+game.onData = (d) =&gt; { if (d.t === 's') render(d); };</code></pre></div>
+
+        <h3>Turn-based games (cards, chess, trivia)</h3>
+        <p>Even simpler — broadcast the move, everyone applies it in order:</p>
+        <div class="codeblock"><div class="cb-head"><em>turn sync</em><button class="copy">copy</button></div>
+<pre><code>function playCard(card) {
+  game.broadcast({ t: 'move', card, by: game.me.id });
+}
+game.onData = (d) =&gt; { if (d.t === 'move') applyMove(d); };</code></pre></div>
+
+        <h3>Private messages (guest → specific guest)</h3>
+        <div class="codeblock"><div class="cb-head"><em>whisper</em><button class="copy">copy</button></div>
+<pre><code>const other = game.players().find(p =&gt; p.id !== game.me.id);
+game.send({ t: 'taunt', text: 'nice miss!' }, other.id);
+
+game.onData = (d, from) =&gt; {
+  if (d.t === 'taunt') chat.log(`⚠ ${from.id}: ${d.text}`);
+};</code></pre></div>
+
+        <div class="callout warn">
+          <b>Keep payloads small.</strong> Send input/state <em>changes</em>, not full world dumps, and stay under ~30 messages per second per player. WebRTC data channels are unordered &amp; reliable here — perfect for game state, but not a torrent client.
+        </div>
+      </section>
+
+      <!-- ───────── SELF-HOSTING ───────── -->
+      <section id="selfhost">
+        <h2>Self-hosting <span class="anchor">your own broker</span></h2>
+        <p>
+          FrostByte rides on the free public PeerJS cloud by default. If you want your own signaling
+          (privacy, regions, or the cloud having a bad day), run the open-source
+          <a href="https://github.com/peers/peerjs-server" target="_blank" rel="noopener">peerjs-server</a>
+          on any free tier (Fly.io, Render, Railway, a $4 VPS…) and point <code>peerConfig</code> at it:
+        </p>
+        <div class="codeblock"><div class="cb-head"><em>own broker</em><button class="copy">copy</button></div>
+<pre><code>const game = new Play({
+  game: 'my-game',
+  peerConfig: { host: 'my-broker.fly.dev', port: 443, path: '/', secure: true }
+});</code></pre></div>
+        <p>Everything else — matchmaking, room codes, events — works identically, because FrostByte only ever talks the standard PeerJS protocol.</p>
+      </section>
+
+      <!-- ───────── FAQ ───────── -->
+      <section id="faq">
+        <h2>FAQ <span class="anchor">quick answers</span></h2>
+        <details>
+          <summary>Is it really free? What's the catch?</summary>
+          <div class="faq-body">Yes. Game data flows directly between browsers (WebRTC), so there is no traffic bill. The public broker does introductions for free — the same infrastructure PeerJS has offered for years. The catch-free path is also the open-source path: self-host the broker if you ever want to.</div>
+        </details>
+        <details>
+          <summary>How many players per room?</summary>
+          <div class="faq-body">Tested comfortably at 2–8 in a star topology. The host relays guest→guest traffic, so CPU/network cost grows linearly. For a 2-player game (the sweet spot for Pong-likes) it's essentially a direct cable.</div>
+        </details>
+        <details>
+          <summary>Does it work on GitHub Pages / itch.io / Neocities?</summary>
+          <div class="faq-body">Anywhere a modern browser opens your page — including this very site, which is plain static hosting. WebRTC doesn't care where the HTML came from.</div>
+        </details>
+        <details>
+          <summary>Mobile support?</summary>
+          <div class="faq-body">Yes — WebRTC data channels run in mobile Safari/Chrome. The Pong template ships touch controls; add <code>game.close()</code> on <code>pagehide</code> for clean leaves.</div>
+        </details>
+        <details>
+          <summary>Is my game data visible to FrostByte or PeerJS?</summary>
+          <div class="faq-body">No. The broker only sees encrypted connection setup (ids, SDP offers). Payloads travel on the direct P2P data channel, encrypted by DTLS end-to-end.</div>
+        </details>
+        <details>
+          <summary>How do I test multiplayer alone?</summary>
+          <div class="faq-body">Open the game in two tabs. Quick match will pair them via the "same network" scope in a second or two — that's the scope doing its job.</div>
+        </details>
+      </section>
+
+      <!-- ───────── TROUBLESHOOTING ───────── -->
+      <section id="trouble">
+        <h2>Troubleshooting <span class="anchor">when frost bites</span></h2>
+        <ul>
+          <li><strong>"Room not found"</strong> — the host closed the tab, or the code was mistyped. Codes are 4 chars from an alphabet without <code>0/O/1/I/L</code>.</li>
+          <li><strong>"signaling broker timeout"</strong> — a corporate firewall is blocking WebRTC signaling. Try another network, or set <code>peerConfig</code> to your own broker on port 443.</li>
+          <li><strong>"WebRTC connection failed (strict NAT)"</strong> — some enterprise/carrier NATs block direct links. Hosting your own TURN-enabled broker fixes it; most home networks are fine.</li>
+          <li><strong>Matchmaking feels slow</strong> — it's probing empty slots. Empty-slot probes fail in ~100 ms, but slow geo APIs can add a moment. If <code>Play.region()</code> fails, you'll match worldwide only.</li>
+          <li><strong>PeerJS CDN blocked?</strong> — play.js already falls back from unpkg to jsDelivr. Offline? Nothing can save us — the engine needs the internet to say hello.</li>
+        </ul>
+        <div class="callout ok">
+          <b>Still stuck?</b> Turn on <code>debug: true</code>, watch the console, and open an issue at
+          <a href="https://github.com/gefrus112/FrostByte/issues" target="_blank" rel="noopener">github.com/gefrus112/FrostByte/issues</a>.
+        </div>
+      </section>
+
+    </div><!-- /docs-body -->
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="foot">
+        <a class="brand" href="index.html"><span class="flake">❄</span> FrostByte</a>
+        <nav>
+          <a href="index.html">Home</a>
+          <a href="templates/pong.html">Pong</a>
+          <a href="templates/chat.html">Chat</a>
+          <a href="templates/starter.html">Starter</a>
+          <a href="https://github.com/gefrus112/FrostByte" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+      <p class="foot-note">no cookies · no tracking · no servers — just frost ❄ MIT License · © 2026 FrostByte contributors</p>
+    </div>
+  </footer>
+
+  <script src="js/effects.js"></script>
+</body>
+</html>
