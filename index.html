@@ -3,17 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FrostByte — Free Multiplayer for Every Web Game · play.js v2</title>
-  <meta name="description" content="FrostByte is a free JavaScript multiplayer library. One script tag, zero servers — matchmaking included, a Lua bridge for Lua multiplayer, and API key management with usage tracking.">
+  <title>FrostByte — Free Multiplayer for Every Web Game · v2</title>
+  <meta name="description" content="FrostByte v2: free JavaScript multiplayer, zero servers. One script tag, live matchmaking, multiplayer in Lua, and API keys that show exactly which site is using them.">
   <meta name="theme-color" content="#08050f">
-  <meta property="og:title" content="FrostByte — free multiplayer for every web game">
-  <meta property="og:description" content="One script. Zero servers. Live matchmaking. Make any HTML5 game multiplayer in minutes.">
+  <meta property="og:title" content="FrostByte v2 — multiplayer for every web game, in JS or Lua">
+  <meta property="og:description" content="One script. Zero servers. Live matchmaking. Lua multiplayer. API keys that show you exactly where they're used.">
   <meta property="og:type" content="website">
   <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;❄&lt;/text&gt;&lt;/svg&gt;">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/landing.css">
 </head>
 <body>
 
@@ -21,9 +22,9 @@
   <div class="aurora"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
   <div class="grid-overlay"></div>
 
-  <!-- ═══════════ NAV (tabs) ═══════════ -->
+  <!-- ═══════════ NAV ═══════════ -->
   <header class="nav glass">
-    <a class="brand" href="index.html"><span class="flake">❄</span> FrostByte <span class="brand-sub">play.js</span></a>
+    <a class="brand" href="index.html"><span class="flake">❄</span> FrostByte <span class="brand-sub">v2</span></a>
     <nav class="tabs">
       <a class="tab active" href="index.html">Home</a>
       <a class="tab" href="docs.html">Docs</a>
@@ -39,15 +40,16 @@
     <!-- ═══════════ HERO ═══════════ -->
     <section class="hero">
       <canvas id="mesh" class="hero-mesh"></canvas>
+
       <div class="hero-copy reveal">
-        <div class="pill"><span class="dot"></span> v2.0.0 · MIT · 100% free forever</div>
+        <div class="pill"><span class="dot"></span> v2.0.0 · now with Lua multiplayer</div>
         <h1>Multiplayer for every game.<br><span class="grad">One script. Zero servers.</span></h1>
         <p class="lead">
-          <strong>FrostByte</strong> is a tiny JavaScript library that turns any HTML/CSS/JS game into a
-          live multiplayer experience. Drop in <code style="font-family:var(--mono);color:var(--vio)">play.js</code>,
-          call <strong>quickMatch()</strong> — and your game searches for players on
-          <strong>your network</strong>, in <strong>your country</strong>, then <strong>worldwide</strong>.
-          Write the networking in JavaScript — or in <strong>Lua</strong> with the new bridge. No backend. No bills.
+          <strong>FrostByte</strong> turns any HTML/CSS/JS game into a live multiplayer experience.
+          Drop in <code style="font-family:var(--mono);color:var(--vio)">play.js</code> and call
+          <strong>quickMatch()</strong> — players find each other on their network, in their country,
+          then worldwide. Write the networking in <strong>JavaScript</strong> — or in
+          <strong>Lua</strong>, new in v2. No backend. No bills. No accounts.
         </p>
         <div class="cta-row">
           <a class="btn btn-primary btn-lg" href="docs.html">Read the Docs →</a>
@@ -57,10 +59,15 @@
       </div>
 
       <div class="hero-term glass reveal d2">
-        <div class="term-bar"><span></span><span></span><span></span><em>index.html — your game</em></div>
-        <pre><code id="termCode"><span class="t-cm">&lt;!-- that's the whole setup --&gt;</span>
-<span class="t-kw">&lt;script</span> <span class="t-pr">src</span>=<span class="t-str">"play.js"</span><span class="t-kw">&gt;&lt;/script&gt;</span>
-
+        <span class="fchip c1">🌙 Lua VM inside</span>
+        <span class="fchip c2">🔑 API keys</span>
+        <span class="fchip c3">⚡ WebRTC P2P</span>
+        <div class="term-bar"><span></span><span></span><span></span><em>your game — pick your language</em></div>
+        <div class="term-tabs">
+          <button class="ttab active" data-pane="pane-js" type="button">JavaScript</button>
+          <button class="ttab" data-pane="pane-lua" type="button">Lua</button>
+        </div>
+        <pre class="tpane active" id="pane-js"><code id="termCode"><span class="t-cm">// multiplayer in three lines</span>
 <span class="t-kw">const</span> game = <span class="t-kw">new</span> <span class="t-fn">Play</span>({ game: <span class="t-str">'my-game'</span> });
 
 <span class="t-cm">// find a live opponent near you</span>
@@ -69,8 +76,115 @@ game.<span class="t-fn">quickMatch</span>();
 game.<span class="t-fn">onPlayerJoin</span> = p =&gt;
   console.<span class="t-fn">log</span>(p.name + <span class="t-str">' joined!'</span>);
 
-<span class="t-cm">// sync your game state, instantly</span>
+<span class="t-cm">// sync state, instantly</span>
 game.<span class="t-fn">broadcast</span>({ type: <span class="t-str">'move'</span>, x: <span class="t-pr">128</span> });</code></pre>
+        <pre class="tpane" id="pane-lua"><code><span class="t-cm">-- multiplayer in pure Lua (v2)</span>
+<span class="t-fn">net</span>.<span class="t-fn">init</span>({ game = <span class="t-str">'my-game'</span>, player = <span class="t-str">'moon'</span> })
+
+<span class="t-fn">net</span>.<span class="t-fn">quickmatch</span>(<span class="t-kw">function</span> (isHost)
+  <span class="t-fn">print</span>(<span class="t-str">'connected! host = '</span> .. <span class="t-fn">tostring</span>(isHost))
+<span class="t-kw">end</span>)
+
+<span class="t-fn">net</span>.<span class="t-fn">on</span>(<span class="t-str">'data'</span>, <span class="t-kw">function</span> (d)
+  <span class="t-fn">print</span>(d.type, d.x)
+<span class="t-kw">end</span>)
+
+<span class="t-fn">net</span>.<span class="t-fn">broadcast</span>({ type = <span class="t-str">'move'</span>, x = <span class="t-pr">128</span> })</code></pre>
+      </div>
+    </section>
+
+    <!-- ═══════════ API RIBBON ═══════════ -->
+    <div class="ribbon reveal" aria-hidden="true">
+      <div class="ribbon-track">
+        <span><b>quickMatch()</b></span><span><b>host()</b></span><span><b>join('K7XF')</b></span><span><b>broadcast()</b></span><span><b>send(data, toId)</b></span><span><b>onPlayerJoin</b></span><span><b>net.init{…}</b></span><span><b>net.on('data')</b></span><span><b>net.players()</b></span><span><b>net.broadcast()</b></span><span><b>js.run()</b></span><span><b>Play.keys.create()</b></span><span><b>key.usage()</b></span><span><b>Play.region()</b></span>
+        <span><b>quickMatch()</b></span><span><b>host()</b></span><span><b>join('K7XF')</b></span><span><b>broadcast()</b></span><span><b>send(data, toId)</b></span><span><b>onPlayerJoin</b></span><span><b>net.init{…}</b></span><span><b>net.on('data')</b></span><span><b>net.players()</b></span><span><b>net.broadcast()</b></span><span><b>js.run()</b></span><span><b>Play.keys.create()</b></span><span><b>key.usage()</b></span><span><b>Play.region()</b></span>
+      </div>
+    </div>
+
+    <!-- ═══════════ NEW IN v2 ═══════════ -->
+    <section class="section" id="v2">
+      <h2 class="sec-title reveal">New in <span class="grad">v2.0.0</span></h2>
+      <p class="sec-sub reveal">Three big upgrades: write multiplayer in Lua, manage API keys with full origin visibility, and a whole new midnight look. Everything is live on this page right now.</p>
+
+      <div class="cards">
+        <div class="card spot reveal">
+          <span class="wm">01</span>
+          <div class="tag">NEW</div>
+          <div class="ico">🌙</div>
+          <h3>Multiplayer in Lua</h3>
+          <p>Add <code>play-lua.js</code> and your networking runs on a real <strong>Lua&nbsp;VM</strong> (Fengari) inside the browser: <code>net.init{}</code>, <code>net.quickmatch()</code>, <code>net.on('data')</code>, <code>net.broadcast()</code> — riding the same P2P mesh as every JS game. Lua can even reach back into the page with <code>js.run()</code>.</p>
+          <div class="links">
+            <a class="btn btn-primary" href="templates/lua.html">▶ Run the Lua VM</a>
+            <a class="btn btn-ghost" href="docs.html#lua">Lua docs</a>
+          </div>
+        </div>
+        <div class="card spot reveal d1">
+          <span class="wm">02</span>
+          <div class="tag">NEW</div>
+          <div class="ico">🔑</div>
+          <h3>API keys that tell you where they're used</h3>
+          <p>Mint keys, allow-list site URLs, and see <strong>the exact page URL every key is called from</strong> — plus call counts and last-seen time. Wrong origin? The handshake is refused on the spot. Manage it all in the dashboard.</p>
+          <div class="links">
+            <a class="btn btn-primary" href="keys.html">Open the dashboard</a>
+            <a class="btn btn-ghost" href="docs.html#keys">Key docs</a>
+          </div>
+        </div>
+        <div class="card spot reveal d2">
+          <span class="wm">03</span>
+          <div class="tag">NEW</div>
+          <div class="ico">🌌</div>
+          <h3>The midnight theme</h3>
+          <p>A whole new dark skin — deep violet and magenta (deliberately not blue), snowfall, drifting aurora, neon terminal glass and card spotlights. You're looking at it. Every template ships with it.</p>
+          <div class="links">
+            <a class="btn btn-primary" href="templates/pong.html">▶ See it in a game</a>
+            <a class="btn btn-ghost" href="docs.html">Read the docs</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ API KEYS SPOTLIGHT ═══════════ -->
+    <section class="keys-spot" id="keys">
+      <div class="reveal">
+        <h2 class="sec-title" style="text-align:left">Know exactly <span class="grad">where</span> your API is used.</h2>
+        <p class="sec-sub" style="text-align:left;max-width:52ch;margin-left:0">
+          Every v2 game can require an API key. FrostByte records the origin that actually
+          presented the key — the full page URL — and shows it in your dashboard with call
+          counts and timestamps. If a key shows up on a site you didn't allow, revoke it in one click.
+        </p>
+        <div class="codeblock" style="margin-bottom:18px"><div class="cb-head"><em>game.js</em><button class="copy">copy</button></div>
+<pre><code>const game = new Play({
+  game:   'my-awesome-game',
+  apiKey: 'FBK-7TQX-4K9M-A2'   // ← checked before every connection
+});</code></pre></div>
+        <ul class="checklist">
+          <li>Origin URL of every handshake — the real site using your key</li>
+          <li>Call counts, first-seen &amp; last-seen per origin</li>
+          <li>Allow-list domains; everything else gets refused</li>
+          <li>Create, pause, revoke and restore keys in seconds</li>
+        </ul>
+        <a class="btn btn-primary" href="keys.html">Manage your keys →</a>
+      </div>
+
+      <div class="kpanel glass reveal d2">
+        <div class="kp-head">
+          <h3>❄ API Keys</h3>
+          <span class="pill mini"><span class="dot"></span> 2 active · 1 blocked</span>
+        </div>
+        <div class="krow">
+          <div class="kmain"><code>FBK-7TQX-4K9M-A2</code><span class="kstate ok">● active</span><span class="kuses">2 origins</span></div>
+          <div class="ko"><span class="ourl">https://arcade.example.com</span><b>1,204</b> calls · <span>last seen 2 min ago</span></div>
+          <div class="ko"><span class="ourl">https://nightfall.itch.io/neon-pong</span><b>87</b> calls · <span>last seen 1 h ago</span></div>
+        </div>
+        <div class="krow">
+          <div class="kmain"><code>FBK-M2VP-8CQQ-X5</code><span class="kstate ok">● active</span><span class="kuses">1 origin</span></div>
+          <div class="ko"><span class="ourl">https://mygame.neocities.org</span><b>3,912</b> calls · <span>last seen just now</span></div>
+        </div>
+        <div class="krow dim">
+          <div class="kmain"><code>FBK-OLD1-TEST-00</code><span class="kstate no">✕ refused</span><span class="kuses">1 origin</span></div>
+          <div class="ko"><span class="ourl">https://unknown-site.io</span><b>3</b> calls · <span>blocked — not on allow-list</span></div>
+        </div>
+        <p class="kp-note">this is a preview — <a href="keys.html">keys.html</a> is the real, working dashboard</p>
       </div>
     </section>
 
@@ -110,33 +224,13 @@ game.<span class="t-fn">broadcast</span>({ type: <span class="t-str">'move'</spa
           <h3>Host relays for free</h3>
           <p>Star topology: the room host relays traffic between players, so 2–8 player games work without a server, and guest→guest messages just work via <code>send(data, toId)</code>.</p>
         </div>
-        <div class="card reveal">
-          <div class="ico">🌙</div>
-          <h3>Multiplayer in Lua</h3>
-          <p><strong>New in v2.</strong> Add <code>play-lua.js</code> and write your networking in <strong>Lua</strong> — a full <code>net.*</code> table runs on the Fengari VM in the browser, riding the same P2P mesh.</p>
-        </div>
-        <div class="card reveal d1">
-          <div class="ico">🔑</div>
-          <h3>API keys &amp; usage tracking</h3>
-          <p><strong>New in v2.</strong> Generate keys, allow-list site URLs, and see <strong>the exact page URL every key is used from</strong> — in the <a href="keys.html">API Keys dashboard</a>.</p>
-        </div>
-        <div class="card reveal d2">
-          <div class="ico">🧩</div>
-          <h3>Templates included</h3>
-          <p>Copy-paste starting points: a full <strong>multiplayer Pong</strong>, a lobby <strong>chat</strong>, a <strong>Lua</strong>-powered room, and a minimal <strong>starter</strong>. Fork one and rename the sprites — done.</p>
-        </div>
-        <div class="card reveal d1">
-          <div class="ico">🛠</div>
-          <h3>Open &amp; hackable</h3>
-          <p>MIT licensed, single file, zero dependencies. Read the source, self-host your own signaling broker with <code>peerConfig</code>, or fork the whole thing on GitHub.</p>
-        </div>
       </div>
     </section>
 
     <!-- ═══════════ HOW IT WORKS ═══════════ -->
     <section class="section" id="how">
       <h2 class="sec-title reveal">Live in <span class="grad">three lines</span></h2>
-      <p class="sec-sub reveal">How to connect your game using JavaScript — the entire ceremony, from cold page to synced multiplayer.</p>
+      <p class="sec-sub reveal">How to connect your game — the entire ceremony, from cold page to synced multiplayer.</p>
 
       <div class="steps">
         <div class="step reveal">
@@ -175,7 +269,7 @@ game.broadcast({ paddleY: 240 });</code></pre></div>
     <section class="reveal">
       <div class="stats-band">
         <div class="stat"><div class="n">$<span data-count="0">0</span></div><div class="l">server cost / month</div></div>
-        <div class="stat"><div class="n"><span data-count="1">0</span> file</div><div class="l">entire library</div></div>
+        <div class="stat"><div class="n"><span data-count="2">0</span> files</div><div class="l">entire library (JS + Lua)</div></div>
         <div class="stat"><div class="n">&lt;<span data-count="100">0</span>ms</div><div class="l">typical P2P latency</div></div>
         <div class="stat"><div class="n">∞</div><div class="l">rooms &amp; players</div></div>
       </div>
@@ -184,7 +278,7 @@ game.broadcast({ paddleY: 240 });</code></pre></div>
     <!-- ═══════════ TEMPLATES ═══════════ -->
     <section class="section" id="templates">
       <h2 class="sec-title reveal">Ready-made <span class="grad">templates</span></h2>
-      <p class="sec-sub reveal">Each template is a single HTML file powered by play.js. Open one in two browser tabs and watch it connect to itself. Steal the code freely.</p>
+      <p class="sec-sub reveal">Each template is a single HTML file powered by FrostByte. Open one in two browser tabs and watch it connect to itself. Steal the code freely.</p>
 
       <div class="cards">
         <div class="card tpl-card reveal">
@@ -259,5 +353,19 @@ game.broadcast({ paddleY: 240 });</code></pre></div>
 
   <script src="play.js"></script>
   <script src="js/effects.js"></script>
+  <script>
+    (function () {
+      var tabs = document.querySelectorAll('.ttab');
+      tabs.forEach(function (t) {
+        t.addEventListener('click', function () {
+          tabs.forEach(function (x) { x.classList.remove('active'); });
+          t.classList.add('active');
+          document.querySelectorAll('.tpane').forEach(function (p) {
+            p.classList.toggle('active', p.id === t.getAttribute('data-pane'));
+          });
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

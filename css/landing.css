@@ -1,0 +1,201 @@
+/* ═══════════════════════════════════════════════════════════════
+   FrostByte v2 — LANDING page styles
+   Extends the midnight design system with hero language tabs,
+   floating chips, API ribbon, v2 spotlight cards and the
+   API-key dashboard preview panel.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── hero: language tabs (JavaScript / Lua) ─────────────────── */
+
+.term-tabs {
+  display: flex; gap: 6px;
+  padding: 10px 16px 0;
+  background: rgba(6, 2, 14, .7);
+  border-bottom: 1px solid var(--line);
+}
+.ttab {
+  font-family: var(--mono); font-size: 12.5px;
+  color: var(--muted); letter-spacing: .3px;
+  background: transparent; border: 1px solid transparent;
+  border-bottom: none; border-radius: 10px 10px 0 0;
+  padding: 7px 18px; cursor: pointer;
+  transition: color .15s, background .15s;
+}
+.ttab:hover { color: var(--text); }
+.ttab.active {
+  color: var(--mag);
+  border-color: var(--line);
+  background: rgba(168, 85, 247, .10);
+}
+.tpane { display: none; }
+.tpane.active { display: block; }
+
+/* ── hero: floating chips around the terminal ───────────────── */
+
+.hero-term { position: relative; }
+
+.fchip {
+  position: absolute; z-index: 3;
+  font-family: var(--mono); font-size: 12px; white-space: nowrap;
+  padding: 8px 14px; border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: rgba(17, 11, 31, .88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 10px 26px rgba(6, 2, 14, .55), 0 0 18px rgba(168, 85, 247, .14);
+  animation: bob 5.5s ease-in-out infinite;
+  pointer-events: none;
+}
+.fchip.c1 { top: -18px; right: -14px; }
+.fchip.c2 { bottom: -16px; left: -30px; animation-delay: -2.2s; }
+.fchip.c3 { bottom: -18px; right: 18%; animation-delay: -3.6s; }
+@keyframes bob { 50% { transform: translateY(-11px); } }
+
+/* ── API ribbon (marquee) ───────────────────────────────────── */
+
+.ribbon {
+  overflow: hidden;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: rgba(10, 6, 20, .55);
+  padding: 13px 0;
+  margin-top: 6px;
+}
+.ribbon-track {
+  display: inline-flex; gap: 44px; white-space: nowrap;
+  font-family: var(--mono); font-size: 13px; color: var(--muted);
+  animation: slide 32s linear infinite;
+  will-change: transform;
+}
+.ribbon-track b { color: var(--vio); font-weight: 500; }
+.ribbon-track span::after {
+  content: '❄'; margin-left: 44px; opacity: .35; font-size: 11px;
+}
+.ribbon:hover .ribbon-track { animation-play-state: paused; }
+@keyframes slide { to { transform: translateX(-50%); } }
+
+/* ── v2 spotlight cards ─────────────────────────────────────── */
+
+.card.spot {
+  display: flex; flex-direction: column;
+  padding: 30px 26px 26px;
+}
+.card.spot .tag {
+  position: absolute; top: 18px; right: 18px;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.5px;
+  color: var(--mag);
+  border: 1px solid var(--line-2); border-radius: 999px;
+  padding: 3px 10px;
+  background: rgba(217, 70, 239, .08);
+  box-shadow: 0 0 14px rgba(217, 70, 239, .15) inset;
+}
+.card.spot .wm {
+  position: absolute; right: 18px; bottom: 8px;
+  font-family: var(--mono); font-size: 72px; font-weight: 700;
+  color: rgba(168, 85, 247, .07);
+  pointer-events: none; line-height: 1;
+}
+.card.spot .links {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-top: auto; padding-top: 20px;
+}
+.card.spot .links .btn { padding: 9px 16px; font-size: 13.5px; }
+
+/* ── API keys spotlight split section ───────────────────────── */
+
+.keys-spot {
+  display: grid;
+  grid-template-columns: 1fr 1.05fr;
+  gap: 52px; align-items: center;
+  padding: 84px 0 30px;
+}
+.keys-spot .sec-title { margin-bottom: 14px; }
+.keys-spot .sec-sub { margin: 0 0 22px; }
+
+.checklist { list-style: none; margin: 0 0 24px; }
+.checklist li {
+  position: relative;
+  padding: 5px 0 5px 28px;
+  color: var(--muted); font-size: 14.5px;
+}
+.checklist li::before {
+  content: '✓';
+  position: absolute; left: 2px; top: 5px;
+  color: var(--good); font-weight: 700;
+}
+
+/* keys dashboard preview panel */
+
+.kpanel { padding: 22px 22px 18px; }
+.kp-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.kp-head h3 { font-size: 17px; letter-spacing: .2px; }
+.pill.mini { margin: 0; padding: 3px 11px; font-size: 11px; }
+.pill.mini .dot { width: 6px; height: 6px; }
+
+.krow {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(6, 2, 14, .45);
+  padding: 14px 16px;
+  margin: 12px 0;
+  transition: border-color .2s, box-shadow .2s;
+}
+.krow:hover { border-color: var(--line-2); box-shadow: 0 0 22px rgba(168, 85, 247, .10); }
+.krow.dim { opacity: .78; }
+
+.kmain { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.kmain code {
+  font-family: var(--mono); font-size: 14.5px;
+  color: var(--vio); letter-spacing: .5px;
+}
+.kstate { font-family: var(--mono); font-size: 12px; }
+.kstate.ok { color: var(--good); }
+.kstate.no { color: var(--bad); }
+.kuses {
+  margin-left: auto;
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.ko {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  font-family: var(--mono); font-size: 12.5px; color: var(--muted);
+  margin-top: 10px;
+}
+.ko b { color: var(--rose); font-weight: 600; }
+.ourl {
+  color: var(--text); font-size: 12px;
+  background: rgba(216, 180, 254, .07);
+  border: 1px solid var(--line);
+  padding: 2px 10px; border-radius: 7px;
+}
+.kp-note {
+  text-align: center; font-size: 12.5px; color: var(--muted);
+  margin: 10px 0 0; font-family: var(--mono);
+}
+
+/* ── responsive ─────────────────────────────────────────────── */
+
+@media (max-width: 980px) {
+  .keys-spot { grid-template-columns: 1fr; gap: 30px; padding-top: 64px; }
+  .fchip { display: none; }
+  .card.spot .wm { font-size: 54px; }
+}
+
+@media (max-width: 640px) {
+  .hero { grid-template-columns: 1fr; padding-top: 56px; }
+  .term-tabs { overflow-x: auto; }
+  .krow { padding: 12px; }
+  .kuses { display: none; }
+}
+
+/* ── reduced motion ─────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .fchip { animation: none; }
+  .ribbon-track { animation: none; }
+}
