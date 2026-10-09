@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Keys — FrostByte play.js</title>
+  <meta name="description" content="FrostByte API key management: generate keys, allow-list sites, and see the exact URL of every page your API is used from.">
+  <meta name="theme-color" content="#08050f">
+  <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;❄&lt;/text&gt;&lt;/svg&gt;">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── keys dashboard specifics ─────────────────────────────── */
+    .keys-head { padding: 64px 0 8px; }
+    .keys-head h1 { font-size: clamp(30px, 4vw, 46px); letter-spacing: -1px; margin-bottom: 12px; }
+    .keys-head p { color: var(--muted); max-width: 68ch; }
+    .keys-grid { display: grid; grid-template-columns: 1fr; gap: 20px; padding: 26px 0 60px; }
+
+    .panel {
+      background: var(--panel); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 24px; position: relative; overflow: hidden;
+    }
+    .panel h2 { font-size: 18px; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+    .panel .hint { color: var(--muted); font-size: 13.5px; margin-bottom: 16px; }
+    .panel h2 .tag {
+      font-family: var(--mono); font-size: 10.5px; letter-spacing: .8px; text-transform: uppercase;
+      color: var(--mag); border: 1px solid var(--line-2); border-radius: 999px; padding: 2px 9px;
+      background: rgba(217, 70, 239, .07);
+    }
+
+    .url-row {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px;
+      background: rgba(6, 2, 14, .55); margin-bottom: 10px;
+    }
+    .url-row:last-child { margin-bottom: 0; }
+    .url-row .u {
+      font-family: var(--mono); font-size: 13px; color: var(--text);
+      word-break: break-all; flex: 1; min-width: 200px;
+    }
+    .url-row .u b { color: var(--vio); font-weight: 600; }
+
+    .form-grid { display: grid; grid-template-columns: 220px 1fr; gap: 14px; }
+    .form-grid label { font-family: var(--mono); font-size: 12px; color: var(--mag); letter-spacing: .5px; display: block; margin-bottom: 6px; }
+    .form-grid input, .form-grid textarea {
+      width: 100%; background: rgba(6, 2, 14, .6); color: var(--text);
+      border: 1px solid var(--line-2); border-radius: 10px;
+      padding: 11px 14px; font-family: var(--font); font-size: 14.5px;
+      outline: none; transition: border-color .2s ease, box-shadow .2s ease;
+    }
+    .form-grid textarea { min-height: 74px; resize: vertical; font-family: var(--mono); font-size: 13px; line-height: 1.6; }
+    .form-grid input:focus, .form-grid textarea:focus { border-color: var(--vio); box-shadow: 0 0 0 3px rgba(168, 85, 247, .18); }
+    .form-grid .mini { color: var(--muted); font-size: 12px; margin-top: 6px; font-family: var(--mono); }
+    .create-row { display: flex; align-items: center; gap: 14px; margin-top: 16px; flex-wrap: wrap; }
+    #createMsg { font-family: var(--mono); font-size: 12.5px; color: var(--good); min-height: 18px; }
+    #createMsg.bad { color: var(--bad); }
+
+    .tbl-wrap { overflow-x: auto; margin: 6px -6px 0; padding: 0 6px; }
+    table.keys-tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 760px; }
+    .keys-tbl th {
+      text-align: left; font-family: var(--mono); font-size: 11px; letter-spacing: .8px;
+      text-transform: uppercase; color: var(--mag); padding: 9px 12px;
+      border-bottom: 1px solid var(--line-2); background: rgba(216, 180, 254, .05);
+      white-space: nowrap;
+    }
+    .keys-tbl td { padding: 12px; border-bottom: 1px solid var(--line); color: #cfc3e8; vertical-align: top; }
+    .keys-tbl tr:hover td { background: rgba(216, 180, 254, .04); }
+    .keys-tbl .kname { font-weight: 600; color: var(--text); }
+    .keys-tbl .kmono { font-family: var(--mono); font-size: 12.5px; color: var(--vio); word-break: break-all; }
+    .keys-tbl .url { font-family: var(--mono); font-size: 12px; color: var(--mag); word-break: break-all; }
+    .keys-tbl .url small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .chip {
+      display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: .5px;
+      padding: 2px 10px; border-radius: 999px; border: 1px solid;
+    }
+    .chip.active  { color: var(--good); border-color: rgba(52, 211, 153, .4);  background: rgba(52, 211, 153, .07); }
+    .chip.revoked { color: var(--bad);  border-color: rgba(248, 113, 113, .4); background: rgba(248, 113, 113, .07); }
+    .chip.never   { color: var(--muted); border-color: var(--line-2); background: rgba(216, 180, 254, .05); }
+    .row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .mini-btn {
+      font-family: var(--mono); font-size: 11.5px; color: var(--mag);
+      background: rgba(217, 70, 239, .08); border: 1px solid var(--line-2);
+      border-radius: 8px; padding: 5px 11px; cursor: pointer; transition: all .2s ease;
+      white-space: nowrap;
+    }
+    .mini-btn:hover { background: rgba(217, 70, 239, .22); box-shadow: var(--glow); }
+    .mini-btn.danger { color: var(--bad); background: rgba(248, 113, 113, .08); }
+    .mini-btn.danger:hover { background: rgba(248, 113, 113, .22); }
+    .mini-btn.ok { color: var(--good); background: rgba(52, 211, 153, .08); }
+    .mini-btn.ok:hover { background: rgba(52, 211, 153, .2); box-shadow: 0 0 18px rgba(52, 211, 153, .25); }
+
+    .usage-log { font-family: var(--mono); font-size: 12.5px; }
+    .usage-log .li {
+      display: flex; gap: 12px; padding: 8px 10px; border-bottom: 1px solid var(--line);
+      flex-wrap: wrap; align-items: baseline;
+    }
+    .usage-log .li:last-child { border-bottom: none; }
+    .usage-log .t { color: var(--muted); white-space: nowrap; }
+    .usage-log .ev { color: var(--good); border: 1px solid rgba(52, 211, 153, .35); border-radius: 6px; padding: 0 7px; font-size: 11px; }
+    .usage-log .gm { color: var(--vio); }
+    .usage-log .src { color: var(--mag); word-break: break-all; }
+    .empty-note { color: var(--muted); font-size: 14px; padding: 18px 4px; }
+
+    .newkey-box {
+      border: 1px solid rgba(168, 85, 247, .5); border-radius: 12px;
+      background: linear-gradient(120deg, rgba(168, 85, 247, .12), rgba(236, 72, 153, .10));
+      padding: 16px 18px; margin-top: 14px; display: none;
+    }
+    .newkey-box.show { display: block; animation: pop .35s cubic-bezier(.2,.8,.2,1); }
+    @keyframes pop { from { transform: scale(.97); opacity: 0; } }
+    .newkey-box .code { font-family: var(--mono); font-size: 15px; color: var(--text); word-break: break-all; text-shadow: 0 0 12px rgba(168, 85, 247, .5); }
+    .newkey-box .lbl { font-family: var(--mono); font-size: 11px; color: var(--mag); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+
+    .callout.serverless { margin-top: 18px; }
+
+    @media (max-width: 760px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .keys-head { padding-top: 44px; }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="snow"></canvas>
+  <div class="aurora"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
+  <div class="grid-overlay"></div>
+
+  <header class="nav glass">
+    <a class="brand" href="index.html"><span class="flake">❄</span> FrostByte <span class="brand-sub">play.js</span></a>
+    <nav class="tabs">
+      <a class="tab" href="index.html">Home</a>
+      <a class="tab" href="docs.html">Docs</a>
+      <a class="tab" href="templates/pong.html">Templates</a>
+      <a class="tab active" href="keys.html">API Keys</a>
+      <a class="tab" href="https://github.com/gefrus112/FrostByte" target="_blank" rel="noopener">GitHub ↗</a>
+    </nav>
+    <a class="btn btn-primary nav-cta" href="docs.html#keys">Key docs</a>
+  </header>
+
+  <main class="wrap">
+
+    <!-- ═══════════ HEADER ═══════════ -->
+    <section class="keys-head reveal">
+      <h1>🔑 API <span class="grad">Keys</span></h1>
+      <p>
+        Generate keys for your FrostByte integration, allow-list the sites that may use them, and see
+        <strong>the exact URL of every page the API is being used from</strong>. When a game connects with
+        <code style="font-family:var(--mono);color:var(--vio)">apiKey</code>, FrostByte validates the key,
+        checks the site allow-list, and records where it was used — right here.
+      </p>
+    </section>
+
+    <div class="keys-grid">
+
+      <!-- ═══════════ API ENDPOINTS ═══════════ -->
+      <section class="panel reveal">
+        <h2>🌐 The API you are using <span class="tag">endpoints</span></h2>
+        <p class="hint">These are the URLs you load the API from. Every key tracks which sites load and use them.</p>
+        <div class="url-row"><span class="u"><b>play.js</b>&nbsp;&nbsp; https://gefrus112.github.io/FrostByte/play.js</span><button class="mini-btn copy-url" data-url="https://gefrus112.github.io/FrostByte/play.js">copy</button></div>
+        <div class="url-row"><span class="u"><b>play-lua.js</b>&nbsp;&nbsp; https://gefrus112.github.io/FrostByte/play-lua.js</span><button class="mini-btn copy-url" data-url="https://gefrus112.github.io/FrostByte/play-lua.js">copy</button></div>
+        <div class="url-row"><span class="u"><b>this dashboard</b>&nbsp;&nbsp; <span id="selfUrl">…</span></span></div>
+      </section>
+
+      <!-- ═══════════ CREATE ═══════════ -->
+      <section class="panel reveal d1">
+        <h2>✨ Generate a key <span class="tag">Play.keys.create()</span></h2>
+        <p class="hint">Name the key and list the site URLs it may be used on — one per line. Use <code style="font-family:var(--mono);color:var(--vio)">*</code> to allow every site.</p>
+        <div class="form-grid">
+          <div>
+            <label for="keyName">KEY NAME</label>
+            <input id="keyName" type="text" maxlength="40" placeholder="e.g. Neon Pong — production" autocomplete="off">
+            <div class="mini">stored as key.name</div>
+          </div>
+          <div>
+            <label for="keyOrigins">ALLOWED SITE URLS (one per line)</label>
+            <textarea id="keyOrigins" placeholder="*
+https://mysite.neocities.org
+https://games.github.io/my-game"></textarea>
+            <div class="mini">validated against location.origin on every connection · suffix wildcards OK (https://*.mysite.org)</div>
+          </div>
+        </div>
+        <div class="create-row">
+          <button class="btn btn-primary" id="createBtn">Generate API key</button>
+          <span id="createMsg"></span>
+        </div>
+        <div class="newkey-box" id="newKeyBox">
+          <div class="lbl">new key — copy it now (it stays listed, but this is the full view)</div>
+          <div class="code" id="newKeyVal"></div>
+        </div>
+
+        <div class="callout serverless">
+          <b>How it works with zero servers:</b> keys live in <b>this browser's localStorage</b> — FrostByte is fully
+          serverless, so there is no database to breach. Validation and the site allow-list are enforced inside
+          <b>play.js</b> itself when your game connects with <b>apiKey</b>, and every successful connect is logged
+          with the page URL it came from.
+        </div>
+      </section>
+
+      <!-- ═══════════ KEYS TABLE ═══════════ -->
+      <section class="panel reveal d2">
+        <h2>🗝 Your keys &amp; where they're used <span class="tag">Play.keys.list()</span></h2>
+        <p class="hint">“Used from” shows the site origin and the full page URL of the last connection made with each key.</p>
+        <div class="tbl-wrap">
+          <table class="keys-tbl">
+            <thead>
+              <tr><th>Name</th><th>Key</th><th>Status</th><th>Used from</th><th>Uses</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="keysBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-note" id="keysEmpty">No keys yet — generate your first one above. ❄</div>
+      </section>
+
+      <!-- ═══════════ USAGE LOG ═══════════ -->
+      <section class="panel reveal d3">
+        <h2>📡 Usage log <span class="tag">Play.keys.usage()</span></h2>
+        <p class="hint">Latest events — every connection records the page it was used from. Newest first.</p>
+        <div class="usage-log" id="usageLog"></div>
+        <div class="row-actions" style="margin-top:14px">
+          <button class="mini-btn danger" id="clearUsageBtn">clear log</button>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="foot">
+        <a class="brand" href="index.html"><span class="flake">❄</span> FrostByte</a>
+        <nav>
+          <a href="index.html">Home</a>
+          <a href="docs.html">Docs</a>
+          <a href="templates/lua.html">Lua demo</a>
+          <a href="templates/starter.html">Starter</a>
+          <a href="https://github.com/gefrus112/FrostByte" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+      <p class="foot-note">no cookies · no tracking · no servers — just frost ❄ MIT License · © 2026 FrostByte contributors</p>
+    </div>
+  </footer>
+
+  <script src="play.js"></script>
+  <script src="js/effects.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    var $ = function (s) { return document.querySelector(s); };
+    var keysBody = $('#keysBody'), usageLog = $('#usageLog');
+
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function when(iso) {
+      if (!iso) return '—';
+      var d = new Date(iso);
+      return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+    }
+    function mask(key) { return key.slice(0, 12) + '•'.repeat(14) + key.slice(-4); }
+
+    /* ── self URL ── */
+    $('#selfUrl').textContent = location.origin + location.pathname;
+
+    /* ── copy buttons ── */
+    document.querySelectorAll('.copy-url').forEach(function (b) {
+      b.addEventListener('click', function () {
+        (navigator.clipboard ? navigator.clipboard.writeText(b.getAttribute('data-url')) : Promise.reject())
+          .then(function () { flash(b, 'copied ✓'); })
+          .catch(function () { flash(b, 'copy failed'); });
+      });
+    });
+    function flash(btn, txt) {
+      var old = btn.textContent;
+      btn.textContent = txt;
+      setTimeout(function () { btn.textContent = old; }, 1400);
+    }
+
+    /* ── create key ── */
+    $('#createBtn').addEventListener('click', function () {
+      var name = $('#keyName').value.trim();
+      var origins = $('#keyOrigins').value.trim() || '*';
+      var rec = Play.keys.create({ name: name || 'unnamed key', origins: origins });
+      $('#createMsg').classList.remove('bad');
+      $('#createMsg').textContent = '✓ key created';
+      $('#newKeyBox').classList.add('show');
+      $('#newKeyVal').textContent = rec.key;
+      $('#keyName').value = ''; $('#keyOrigins').value = '';
+      render();
+    });
+
+    /* ── keys table ── */
+    function render() {
+      var keys = Play.keys.list();
+      $('#keysEmpty').style.display = keys.length ? 'none' : 'block';
+      keysBody.innerHTML = keys.map(function (r) {
+        var used = r.uses > 0;
+        return '<tr>' +
+          '<td><span class="kname">' + esc(r.name) + '</span><br><span class="kmono" style="color:var(--muted);font-size:10.5px">' + when(r.createdAt) + '</span></td>' +
+          '<td><span class="kmono" data-full="' + esc(r.key) + '">' + esc(mask(r.key)) + '</span></td>' +
+          '<td><span class="chip ' + (r.status === 'active' ? 'active">active' : 'revoked">revoked') + '</span></td>' +
+          '<td>' + (used
+            ? '<span class="url">' + esc(r.usedOn || '—') + '<small>' + esc(r.usedFrom || '') + '</small><small style="color:var(--vio)">' + when(r.lastUsed) + '</small></span>'
+            : '<span class="chip never">not used yet</span>') + '</td>' +
+          '<td>' + (r.uses || 0) + '</td>' +
+          '<td><div class="row-actions">' +
+            '<button class="mini-btn" data-act="copy">copy</button>' +
+            '<button class="mini-btn" data-act="reveal">reveal</button>' +
+            (r.status === 'active'
+              ? '<button class="mini-btn danger" data-act="revoke">revoke</button>'
+              : '<button class="mini-btn ok" data-act="restore">restore</button>') +
+            '<button class="mini-btn danger" data-act="del">delete</button>' +
+          '</div></td>' +
+        '</tr>';
+      }).join('');
+      renderUsage();
+    }
+
+    keysBody.addEventListener('click', function (ev) {
+      var btn = ev.target.closest && ev.target.closest('.mini-btn');
+      if (!btn) return;
+      var td = btn.closest('tr');
+      var keyEl = td.querySelector('[data-full]');
+      var key = keyEl.getAttribute('data-full');
+      var act = btn.getAttribute('data-act');
+      if (act === 'copy') {
+        (navigator.clipboard ? navigator.clipboard.writeText(key) : Promise.reject())
+          .then(function () { flash(btn, 'copied ✓'); })
+          .catch(function () { flash(btn, 'copy failed'); });
+      } else if (act === 'reveal') {
+        var showing = keyEl.getAttribute('data-shown') === '1';
+        keyEl.textContent = showing ? mask(key) : key;
+        keyEl.setAttribute('data-shown', showing ? '0' : '1');
+        btn.textContent = showing ? 'reveal' : 'hide';
+      } else if (act === 'revoke') {
+        Play.keys.revoke(key); render();
+      } else if (act === 'restore') {
+        Play.keys.restore(key); render();
+      } else if (act === 'del') {
+        if (confirm('Delete this key permanently?')) { Play.keys.del(key); render(); }
+      }
+    });
+
+    /* ── usage log ── */
+    function renderUsage() {
+      var log = Play.keys.usage(20);
+      if (!log.length) {
+        usageLog.innerHTML = '<div class="empty-note">No usage yet — connect a game with <b style="color:var(--vio)">new Play({ apiKey: … })</b> and it will appear here with the exact page URL.</div>';
+        return;
+      }
+      usageLog.innerHTML = log.map(function (u) {
+        return '<div class="li">' +
+          '<span class="t">' + when(u.at) + '</span>' +
+          '<span class="ev">' + esc(u.event || 'connect') + '</span>' +
+          '<span class="gm">' + esc(u.game || '—') + '</span>' +
+          '<span class="src">' + esc(u.page || u.origin || '—') + '</span>' +
+        '</div>';
+      }).join('');
+    }
+    $('#clearUsageBtn').addEventListener('click', function () {
+      Play.keys.clearUsage(); renderUsage();
+    });
+
+    render();
+  })();
+  </script>
+</body>
+</html>

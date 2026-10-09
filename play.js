@@ -6,12 +6,18 @@
  * ██║     ██████╔╝╚██████╔╝███████╗   ██║   ██║  ██║   ██║      ██║   ███████║
  * ╚═╝     ╚═════╝  ╚═════╝ ╚══════╝   ╚═╝   ╚═╝  ╚═╝   ╚═╝      ╚═╝   ╚══════╝
  *
- * FrostByte play.js v1.0.0 — free multiplayer for the open web.
+ * FrostByte play.js v2.0.0 — free multiplayer for the open web.
  * One <script> tag. Zero backend. Live matchmaking included.
+ * NEW IN v2:
+ *   • API key management — Play.keys.create()/list()/revoke(), the
+ *     `apiKey` option, and usage tracking that records THE URL/SITE
+ *     each key is being used from (see keys.html dashboard).
+ *   • Lua multiplayer — pair with play-lua.js to drive this whole
+ *     API from Lua code (Fengari VM in the browser).
  *
  *   <script src="https://gefrus112.github.io/FrostByte/play.js"></script>
  *   <script>
- *     const game = new Play({ game: 'my-game' });
+ *     const game = new Play({ game: 'my-game', apiKey: 'fbk_live_…' });
  *     game.quickMatch();                       // auto-find a player nearby
  *     game.onPlayerJoin = p => say(p.name + ' joined!');
  *     game.broadcast({ type: 'move', x: 12 }); // send data to everyone
@@ -35,7 +41,7 @@
 
   /* ═════════════════════════ constants ═════════════════════════ */
 
-  var VERSION = '1.0.0';
+  var VERSION = '2.0.0';
   var ID_TAG = 'fbx1';                       // namespace so we never clash on the broker
   var PEERJS_CDNS = [
     'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js',
@@ -231,13 +237,166 @@
     });
   }
 
+  /* ═══════════════ API key manager (v2, client-side) ════════════ */
+  /*
+   * Keys let you gate and monitor who uses your FrostByte integration.
+   * Every key records THE SITE URL IT IS USED FROM (origin + page), how
+   * many times it connected, and when — visible on the keys.html dashboard.
+   *
+   *   Play.keys.create({ name: 'My Game', origins: ['*'] })
+   *   Play.keys.list() / get(key) / revoke(key) / del(key)
+   *   Play.keys.usage() / clearUsage()
+   *
+   * Then connect with the key:
+   *   new Play({ game: 'my-game', apiKey: 'fbk_live_…' })
+   *
+   * Keys are stored in this browser's localStorage (FrostByte is fully
+   * serverless — there is no database to leak). Validation enforces the
+   * origin allow-list you set, right inside the library.
+   */
+
+  var LS_KEYS  = 'frostbyte.keys';
+  var LS_USAGE = 'frostbyte.usage';
+  var USAGE_CAP = 250;
+
+  function lsGet(k, fb) {
+    try { var v = global.localStorage.getItem(k); return v ? JSON.parse(v) : fb; }
+    catch (e) { return fb; }
+  }
+  function lsSet(k, v) {
+    try { global.localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode */ }
+  }
+  function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+  function makeApiKey() {
+    var c = 'abcdefghijklmnopqrstuvwxyz0123456789', s = '';
+    for (var i = 0; i < 24; i++) s += c[(Math.random() * c.length) | 0];
+    return 'fbk_live_' + s;
+  }
+
+  function pageOrigin() { return (global.location && global.location.origin) || 'file://'; }
+  function pageURL()    { return (global.location && global.location.href)  || 'file://'; }
+
+  function originAllowed(rec, origin) {
+    if (!rec.origins || !rec.origins.length) return true;
+    return rec.origins.some(function (o) {
+      if (o === '*' || o === 'all') return true;
+      o = String(o).replace(/\/+$/, '');
+      if (o === origin) return true;
+      /* suffix wildcard: https://*.example.com */
+      var m = /^[a-z]+:\/\/\*\.(.+)$/.exec(o);
+      if (m) {
+        var suffix = '.' + m[1].replace(/\/+$/, '');
+        return origin.slice(-suffix.length) === suffix;
+      }
+      return false;
+    });
+  }
+
+  var Keys = {
+    /** Create a key: { name, origins } → key record. origins: array or
+     *  newline/comma string; '*' allows every site. */
+    create: function (opts) {
+      opts = opts || {};
+      var raw = opts.origins == null ? '*' : opts.origins;
+      var origins = (Array.isArray(raw) ? raw : String(raw).split(/[\n,]+/))
+        .map(function (s) { return s.trim(); }).filter(Boolean);
+      if (!origins.length) origins = ['*'];
+      var rec = {
+        key:       makeApiKey(),
+        name:      String(opts.name || 'unnamed key').slice(0, 40),
+        origins:   origins,
+        status:    'active',
+        createdAt: new Date().toISOString(),
+        lastUsed:  null,
+        usedFrom:  null,      // full URL of the page using the API
+        usedOn:    null,      // origin of the site using the API
+        uses:      0
+      };
+      var list = lsGet(LS_KEYS, []);
+      list.push(rec);
+      lsSet(LS_KEYS, list);
+      return clone(rec);
+    },
+    /** All key records. */
+    list: function () { return lsGet(LS_KEYS, []).map(clone); },
+    /** One key record (or null). */
+    get: function (key) {
+      var found = null;
+      lsGet(LS_KEYS, []).forEach(function (r) { if (r.key === key) found = clone(r); });
+      return found;
+    },
+    /** Disable a key — connections using it will fail validation. */
+    revoke: function (key) { return Keys._setStatus(key, 'revoked'); },
+    /** Re-enable a revoked key. */
+    restore: function (key) { return Keys._setStatus(key, 'active'); },
+    /** Delete a key record entirely. */
+    del: function (key) {
+      var list = lsGet(LS_KEYS, []).filter(function (r) { return r.key !== key; });
+      lsSet(LS_KEYS, list);
+      return true;
+    },
+    /** Recent usage log: [{ at, event, game, origin, page, key, name }] */
+    usage: function (n) {
+      var log = lsGet(LS_USAGE, []);
+      return n ? log.slice(-n).reverse() : log.slice().reverse();
+    },
+    /** Wipe the usage log. */
+    clearUsage: function () { lsSet(LS_USAGE, []); return true; },
+
+    _setStatus: function (key, status) {
+      var list = lsGet(LS_KEYS, []), hit = null;
+      list.forEach(function (r) { if (r.key === key) { r.status = status; hit = clone(r); } });
+      lsSet(LS_KEYS, list);
+      return hit;
+    },
+    /** { ok, rec?, message? } — format, registry, status and origin checks. */
+    _validate: function (key) {
+      if (typeof key !== 'string' || !/^fbk_live_[a-z0-9]{16,32}$/.test(key)) {
+        return { ok: false, message: 'Malformed API key — expected fbk_live_… (generate one on the API Keys page).' };
+      }
+      var rec = Keys.get(key);
+      if (!rec)            return { ok: false, message: 'Unknown API key. Create one on the API Keys page (keys.html).' };
+      if (rec.status !== 'active') return { ok: false, message: 'API key "' + rec.name + '" has been revoked.' };
+      if (!originAllowed(rec, pageOrigin())) {
+        return { ok: false, message: 'API key "' + rec.name + '" is not allowed on ' + pageOrigin() + ' — add this site URL to the key on the API Keys page.' };
+      }
+      return { ok: true, rec: rec };
+    },
+    /** Record a successful use: updates the key + appends to the usage log. */
+    _record: function (key, gameName, event) {
+      var list = lsGet(LS_KEYS, []);
+      list.forEach(function (r) {
+        if (r.key === key) {
+          r.lastUsed = new Date().toISOString();
+          r.usedFrom = pageURL();
+          r.usedOn   = pageOrigin();
+          r.uses     = (r.uses || 0) + 1;
+        }
+      });
+      lsSet(LS_KEYS, list);
+      var log = lsGet(LS_USAGE, []);
+      log.push({
+        at: new Date().toISOString(), event: event || 'connect',
+        game: gameName || null, key: key,
+        name: (Keys.get(key) || {}).name || null,
+        origin: pageOrigin(), page: pageURL()
+      });
+      if (log.length > USAGE_CAP) log = log.slice(-USAGE_CAP);
+      lsSet(LS_USAGE, log);
+    }
+  };
+
   /* ═══════════════════════════ Game ════════════════════════════ */
   /**
-   * new Play({ game, playerName?, debug?, peerConfig?, on*? })
+   * new Play({ game, playerName?, apiKey?, debug?, peerConfig?, on*? })
    *
    *  game        — namespace string, e.g. 'pong'. Rooms of different
    *                games can never collide with each other.
    *  playerName  — optional nickname shown to other players.
+   *  apiKey      — optional FrostByte key (fbk_live_…). Validated against
+   *                the local key registry + its site allow-list; usage is
+   *                recorded with the URL/site it is used from. See keys.html.
    *  peerConfig  — optional self-hosted broker config:
    *                { host:'my-broker', port:443, path:'/', secure:true }
    *  on*         — shortcut event handlers (also available via .on()).
@@ -250,6 +409,24 @@
     this.opts = opts;
     this.gameName = sanitizeName(opts.game);
     this.version = VERSION;
+    this.apiKey = opts.apiKey || null;
+    this._keyRec = null;
+    this._keyError = null;
+
+    if (this.apiKey) {
+      var v = Keys._validate(this.apiKey);
+      if (!v.ok) {
+        this._keyError = new Error('FrostByte: ' + v.message);
+        this._keyError.type = 'key';
+        var kf = this;
+        setTimeout(function () {
+          kf._status('disconnected', kf._keyError.message);
+          kf.emit('error', kf._keyError);
+        }, 0);
+      } else {
+        this._keyRec = v.rec;
+      }
+    }
 
     this.peer = null;          // underlying PeerJS peer
     this.code = null;          // 4-char room code (null in quick match)
@@ -281,6 +458,14 @@
   Game.prototype._status = function (state, detail) {
     this.emit('status', state, detail || '');
     if (this.opts.debug) console.log('[FrostByte]', state, detail || '');
+  };
+
+  /* ── key guard + usage recorder (v2) ────────────────────────── */
+  Game.prototype._guard = function () {
+    if (this._keyError) throw this._keyError;
+  };
+  Game.prototype._recordUse = function () {
+    if (this._keyRec) Keys._record(this.apiKey, this.gameName, 'connect');
   };
 
   /* ── create a peer and wait for its broker id ───────────────── */
@@ -325,6 +510,7 @@
    * Share the code — guests join with game.join(code).
    */
   Game.prototype.host = async function () {
+    this._guard();
     if (this._busy) throw new Error('FrostByte: this Game instance is already connecting.');
     this._busy = true;
     await loadEngine();
@@ -342,6 +528,7 @@
         this._wireHost();
         this._startHeartbeat();
         this._status('hosting', 'room open — code ' + code);
+        this._recordUse();
         this.emit('ready', { isHost: true, code: code, me: this.me, scope: 'private' });
         return { code: code };
       } catch (e) {
@@ -447,6 +634,7 @@
    * Resolves { code } once connected to the host.
    */
   Game.prototype.join = async function (code) {
+    this._guard();
     if (this._busy) throw new Error('FrostByte: this Game instance is already connecting.');
     this._busy = true;
     await loadEngine();
@@ -474,6 +662,7 @@
 
     this._attachGuestConn(conn);
     this._startGuestWatch();
+    this._recordUse();
     this._status('connected', 'joined room ' + roomCode);
     this.emit('ready', { isHost: false, code: roomCode, me: this.me, scope: 'private' });
     this._busy = false;
@@ -549,6 +738,7 @@
    * and the next searcher finds you. Resolves { isHost, scope }.
    */
   Game.prototype.quickMatch = async function () {
+    this._guard();
     if (this._busy) throw new Error('FrostByte: this Game instance is already connecting.');
     this._busy = true;
 
@@ -581,6 +771,7 @@
           this._attachGuestConn(conn);
           this._startGuestWatch();
           this._status('connected', 'matched · ' + scope.label);
+          this._recordUse();
           this.emit('ready', { isHost: false, code: null, me: this.me, scope: scope.label });
           this._busy = false;
           return { isHost: false, scope: scope.label };
@@ -607,6 +798,7 @@
           this._wireHost();
           this._startHeartbeat();
           this._status('waiting', 'waiting for a challenger · ' + sc.label);
+          this._recordUse();
           this.emit('ready', { isHost: true, code: null, me: this.me, scope: sc.label });
           this._busy = false;
           return { isHost: true, scope: sc.label };
@@ -673,6 +865,7 @@
   Play.Game      = Game;
   Play.region    = region;          // Play.region() → Promise<{ ip, country, network }>
   Play.version   = VERSION;
+  Play.keys      = Keys;            // v2 — API key management (see keys.html)
   Play.isSupported = function () {
     return typeof global.RTCPeerConnection !== 'undefined' ||
            typeof global.webkitRTCPeerConnection !== 'undefined';

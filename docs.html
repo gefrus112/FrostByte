@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Docs — FrostByte play.js</title>
-  <meta name="description" content="FrostByte play.js documentation: install, connect, host, join, quickMatch, send, broadcast, events and matchmaking.">
-  <meta name="theme-color" content="#05070f">
+  <title>Docs — FrostByte play.js v2</title>
+  <meta name="description" content="FrostByte play.js v2 documentation: install, connect, host, join, quickMatch, send, broadcast, events, matchmaking, Lua multiplayer (play-lua.js) and API key management.">
+  <meta name="theme-color" content="#08050f">
   <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;❄&lt;/text&gt;&lt;/svg&gt;">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,6 +24,7 @@
       <a class="tab" href="index.html">Home</a>
       <a class="tab active" href="docs.html">Docs</a>
       <a class="tab" href="templates/pong.html">Templates</a>
+      <a class="tab" href="keys.html">API Keys</a>
       <a class="tab" href="https://github.com/gefrus112/FrostByte" target="_blank" rel="noopener">GitHub ↗</a>
     </nav>
     <a class="btn btn-primary nav-cta" href="#start">Get Started</a>
@@ -34,6 +35,7 @@
     <!-- ═══════════ SIDEBAR ═══════════ -->
     <aside class="docs-nav glass">
       <div class="group">Begin</div>
+      <a href="#v2">New in v2</a>
       <a href="#start">Getting started</a>
       <a href="#concepts">Core concepts</a>
       <div class="group">API</div>
@@ -41,6 +43,11 @@
       <a href="#methods">Methods</a>
       <a href="#events">Events</a>
       <a href="#statics">Static helpers</a>
+      <div class="group">Lua</div>
+      <a href="#lua">Lua multiplayer</a>
+      <a href="#luaref">Lua API reference</a>
+      <div class="group">Keys</div>
+      <a href="#keys">API keys</a>
       <div class="group">Guides</div>
       <a href="#matchmaking">Matchmaking</a>
       <a href="#patterns">Data patterns</a>
@@ -52,6 +59,25 @@
 
     <!-- ═══════════ CONTENT ═══════════ -->
     <div class="docs-body">
+
+      <!-- ───────── NEW IN V2 ───────── -->
+      <section id="v2">
+        <h2>New in v2 <span class="anchor">2.0.0</span></h2>
+        <p>
+          FrostByte v2 keeps everything that made v1 effortless — one script tag, zero servers, live matchmaking —
+          and adds two big capabilities plus a brand-new midnight look. If you are upgrading from v1, nothing breaks:
+          the core <code>Play</code> API is unchanged, so existing games keep working exactly as before.
+        </p>
+        <ul>
+          <li><strong>🌙 Lua multiplayer (<code>play-lua.js</code>).</strong> Embed the Fengari Lua VM in your page and drive the entire FrostByte API from Lua code through a <code>net.*</code> table — <code>net.host()</code>, <code>net.broadcast()</code>, <code>net.on('data', fn)</code>… Your game logic can now be written in Lua while the transport stays the same P2P WebRTC mesh. See <a href="#lua">Lua multiplayer</a>.</li>
+          <li><strong>🔑 API keys with usage tracking.</strong> Generate keys, allow-list the site URLs each key may be used on, and every connection records <strong>the exact page URL it came from</strong>. Manage everything in the <a href="keys.html">API Keys dashboard</a>. See <a href="#keys">API keys</a>.</li>
+          <li><strong>🌌 Midnight theme.</strong> The whole site and every template moved to a dark violet/magenta palette — deliberately not blue — with animated gradient frames, scanlines and breathing glows.</li>
+        </ul>
+        <div class="callout ok">
+          <b>Upgrading:</b> change your script URL to <code>play.js</code> on this site (it now serves v2) and you're done.
+          Keys are <em>optional</em> — <code>new Play({ game })</code> works exactly like it did in v1.
+        </div>
+      </section>
 
       <!-- ───────── GETTING STARTED ───────── -->
       <section id="start">
@@ -131,6 +157,7 @@ game.broadcast({ type: 'move', x: 128, y: 240 });</code></pre></div>
           <tbody>
             <tr><td>game</td><td>string</td><td><strong>Required.</strong> Your namespace, e.g. <code>'pong'</code>. Lowercase letters, digits, <code>-</code>, <code>_</code>. Rooms never collide between different namespaces.</td></tr>
             <tr><td>playerName</td><td>string</td><td>Nickname shown in the roster and join events (max 16 chars).</td></tr>
+            <tr><td>apiKey</td><td>string</td><td><strong>New in v2.</strong> A FrostByte key (<code>fbk_live_…</code>). Validated against the local key registry and its site allow-list; successful connections record the page URL they came from. Optional — see <a href="#keys">API keys</a>.</td></tr>
             <tr><td>debug</td><td>boolean</td><td>Verbose <code>console</code> logging of every status change.</td></tr>
             <tr><td>peerConfig</td><td>object</td><td>Self-hosted signaling broker config, e.g. <code>{ host:'broker.me', port:443, path:'/', secure:true }</code>. See <a href="#selfhost">Self-hosting</a>.</td></tr>
             <tr><td>onReady / onStatus / onData / onPlayerJoin / onPlayerLeave / onError</td><td>function</td><td>Shortcut event handlers — same as calling <code>game.on(event, fn)</code>. See <a href="#events">Events</a>.</td></tr>
@@ -195,14 +222,154 @@ game.on('data', (d, from) =&gt; console.log('got', d, 'from', from.id));</code><
           <thead><tr><th>Helper</th><th>Returns</th><th>Description</th></tr></thead>
           <tbody>
             <tr><td>Play.region()</td><td>Promise&lt;{ ip, country, network }&gt;</td><td>Your public IP, ISO country code and a hashed network fingerprint (cached after first call).</td></tr>
+            <tr><td>Play.keys</td><td>Key manager</td><td><strong>New in v2.</strong> <code>create()/list()/get()/revoke()/restore()/del()/usage()/clearUsage()</code> — see <a href="#keys">API keys</a> and the <a href="keys.html">dashboard</a>.</td></tr>
             <tr><td>Play.isSupported()</td><td>boolean</td><td>Does this browser support WebRTC? If false, show a "use a modern browser" screen.</td></tr>
-            <tr><td>Play.version</td><td>string</td><td>Library version, e.g. <code>'1.0.0'</code>.</td></tr>
+            <tr><td>Play.version</td><td>string</td><td>Library version, e.g. <code>'2.0.0'</code>.</td></tr>
           </tbody>
         </table>
         <div class="codeblock"><div class="cb-head"><em>region check</em><button class="copy">copy</button></div>
 <pre><code>const reg = await Play.region();
 console.log(reg.country);   // "US"
 console.log(reg.network);   // "k3f9x2a1" — same value for same-router players</code></pre></div>
+      </section>
+
+      <!-- ───────── LUA MULTIPLAYER ───────── -->
+      <section id="lua">
+        <h2>Lua multiplayer <span class="anchor">play-lua.js</span></h2>
+        <p>
+          <strong>play-lua.js</strong> embeds the <a href="https://fengari.io" target="_blank" rel="noopener">Fengari</a>
+          Lua VM (loaded from CDN, ~100 KB) and exposes the whole FrostByte API to Lua through a
+          <code>net</code> table. Your networking code can now be written <em>entirely in Lua</em>, while data still
+          travels over the same P2P WebRTC mesh as every other FrostByte game. JavaScript and Lua can call each other
+          freely — JS calls Lua functions, Lua touches the DOM back.
+        </p>
+
+        <h3>1 · Include both scripts</h3>
+        <p><code>play.js</code> first (it is the transport), then <code>play-lua.js</code> (it is the bridge):</p>
+        <div class="codeblock"><div class="cb-head"><em>index.html</em><button class="copy">copy</button></div>
+<pre><code>&lt;script src="https://gefrus112.github.io/FrostByte/play.js"&gt;&lt;/script&gt;
+&lt;script src="https://gefrus112.github.io/FrostByte/play-lua.js"&gt;&lt;/script&gt;</code></pre></div>
+
+        <h3>2 · Write multiplayer in Lua</h3>
+        <p>Run Lua from JavaScript with <code>FrostByte.lua(source, opts)</code> (or <code>FrostByteLua.run</code>) — it resolves with <code>{ ok, error, api }</code>:</p>
+        <div class="codeblock"><div class="cb-head"><em>game.js</em><button class="copy">copy</button></div>
+<pre><code>const res = await FrostByte.lua(`
+  net.init({ game = 'my-lua-game', player = 'mo' })
+  net.on('data', function (d, from)
+    print('got', d.text, 'from', from.id)
+  end)
+  net.quickmatch()
+  net.broadcast({ text = 'hello from Lua!' })
+`, { globals: { ROOM: 'K7XF' } });
+
+// call Lua functions from JavaScript any time:
+res.api.call('on_button_pressed', 42);</code></pre></div>
+
+        <p>Or drop a Lua file straight into the page — <code>&lt;script type="text/lua"&gt;</code> blocks are executed automatically once the VM is ready:</p>
+        <div class="codeblock"><div class="cb-head"><em>inline Lua</em><button class="copy">copy</button></div>
+<pre><code>&lt;script type="text/lua"&gt;
+  net.init({ game = 'my-lua-game' })
+  net.host(function (code) print('room code: ' .. code) end)
+&lt;/script&gt;</code></pre></div>
+
+        <h3>3 · Lua touches the DOM with <code>js.run</code></h3>
+        <div class="codeblock"><div class="cb-head"><em>ui.lua</em><button class="copy">copy</button></div>
+<pre><code>net.on('playerjoin', function (p)
+  js.run('hud.flash("' .. p.name .. ' joined")')
+end)</code></pre></div>
+
+        <p>The <a href="templates/lua.html">Lua Chat template</a> is a complete working example — the entire networking layer of a chat room in ~60 lines of Lua.</p>
+        <div class="callout">
+          <b>How it fits together:</b> Lua calls <code>net.*</code> → the bridge calls the same JS API from v1 → WebRTC does the transport.
+          Tables cross the boundary both ways as plain JSON-able data, so <code>{ x = 1, tags = {'a','b'} }</code> in Lua is
+          <code>{ x: 1, tags: ['a','b'] }</code> in JavaScript.
+        </div>
+      </section>
+
+      <!-- ───────── LUA API REFERENCE ───────── -->
+      <section id="luaref">
+        <h2>Lua API reference <span class="anchor">net.*</span></h2>
+        <p>Everything below is available inside Lua once <code>play-lua.js</code> is loaded. Networking functions mirror the JavaScript API — same semantics, Lua-style.</p>
+        <table class="api-table">
+          <thead><tr><th>Lua call</th><th>Returns</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>net.init(cfg)</td><td>—</td><td>Connect the bridge: <code>{ game = 'name', player = 'mo', apiKey = 'fbk_live_…', debug = false }</code>. Creates the underlying <code>Play</code> instance.</td></tr>
+            <tr><td>net.quickmatch(cb?)</td><td>—</td><td>Auto matchmaking. Callback: <code>cb(isHost, scope)</code> or <code>cb(nil, errorMessage)</code>. The <code>ready</code> event also fires.</td></tr>
+            <tr><td>net.host(cb?)</td><td>—</td><td>Host a private room. Callback: <code>cb(code)</code> — e.g. <code>"K7XF"</code> — or <code>cb(nil, err)</code>.</td></tr>
+            <tr><td>net.join(code, cb?)</td><td>—</td><td>Join a room by code. Callback: <code>cb(code)</code> or <code>cb(nil, err)</code>.</td></tr>
+            <tr><td>net.broadcast(value)</td><td>—</td><td>Send to everyone. <code>value</code> may be a table, string, number or boolean.</td></tr>
+            <tr><td>net.send(value, toId)</td><td>—</td><td>Private message to one player id.</td></tr>
+            <tr><td>net.players()</td><td>table</td><td>Roster: <code>{ { id='…', isHost=false, name='mo' }, … }</code>, host first.</td></tr>
+            <tr><td>net.me()</td><td>table</td><td>Your own <code>{ id, isHost, name }</code>, or <code>nil</code> before connecting.</td></tr>
+            <tr><td>net.code()</td><td>string</td><td>The 4-char room code, or <code>nil</code> in quick match.</td></tr>
+            <tr><td>net.ishost()</td><td>bool</td><td>Are you the host of this room?</td></tr>
+            <tr><td>net.close()</td><td>—</td><td>Leave and tear everything down.</td></tr>
+            <tr><td>net.on(event, fn)</td><td>—</td><td>Subscribe: <code>'data' (data, from)</code>, <code>'status' (state, detail)</code>, <code>'ready' (info)</code>, <code>'playerjoin' (p)</code>, <code>'playerleave' (p)</code>, <code>'error' (e)</code>. Multiple handlers per event are fine.</td></tr>
+            <tr><td>net.version()</td><td>string</td><td>Bridge + library versions.</td></tr>
+            <tr><td>js.run(code)</td><td>—</td><td>Execute a JavaScript string — your escape hatch to the DOM.</td></tr>
+            <tr><td>js.stringify(v)</td><td>string</td><td>JSON-encode a Lua table (handy for <code>js.run</code>).</td></tr>
+          </tbody>
+        </table>
+        <p>From the JavaScript side, <code>res.api</code> exposes <code>call(name, …args)</code> (invoke a Lua global function and get its return value), <code>get(name)</code> / <code>set(name, value)</code> for globals, and <code>close()</code>.</p>
+      </section>
+
+      <!-- ───────── API KEYS ───────── -->
+      <section id="keys">
+        <h2>API keys <span class="anchor">Play.keys — v2</span></h2>
+        <p>
+          Keys let you gate and monitor who uses your FrostByte integration. Generate a key, allow-list the site URLs
+          it may be used on, and hand it to your pages via the <code>apiKey</code> option. Every successful connection
+          then records <strong>the site origin and the full page URL it was used from</strong>, plus a timestamp and
+          running use count — all visible in the <a href="keys.html">API Keys dashboard</a>.
+        </p>
+
+        <h3>Manage keys from JavaScript</h3>
+        <div class="codeblock"><div class="cb-head"><em>keys.js</em><button class="copy">copy</button></div>
+<pre><code>// create — allow every site, or list specific origins
+const key = Play.keys.create({
+  name: 'Neon Pong — production',
+  origins: ['https://neonpong.pages.dev', 'https://*.mysite.org']
+});
+console.log(key.key);            // 'fbk_live_x9…' — share with your pages
+
+Play.keys.list();                // all key records + usage info
+Play.keys.get('fbk_live_…');     // one record
+Play.keys.revoke('fbk_live_…');  // block it (restore() re-enables)
+Play.keys.del('fbk_live_…');     // delete the record
+Play.keys.usage(20);             // last 20 usage events, newest first
+Play.keys.clearUsage();          // wipe the log</code></pre></div>
+
+        <h3>Use a key in your game</h3>
+        <div class="codeblock"><div class="cb-head"><em>game.js</em><button class="copy">copy</button></div>
+<pre><code>const game = new Play({
+  game: 'neon-pong',
+  apiKey: 'fbk_live_x9y8…'
+});
+
+game.onError = err => {
+  if (err.type === 'key') banner.textContent = err.message;
+};</code></pre></div>
+
+        <h3>What gets validated, and when</h3>
+        <ul>
+          <li><strong>Format</strong> — keys look like <code>fbk_live_&lt;24 random chars&gt;</code>.</li>
+          <li><strong>Registry</strong> — the key must exist in this browser's registry (created via <code>Play.keys.create()</code> or the dashboard).</li>
+          <li><strong>Status</strong> — revoked keys are rejected with a friendly <code>error</code> event (<code>err.type === 'key'</code>), and <code>host()/join()/quickMatch()</code> refuse to run.</li>
+          <li><strong>Site allow-list</strong> — the current <code>location.origin</code> must match one of the key's origins (<code>'*'</code> allows all; <code>https://*.mysite.org</code> allows subdomains). This is how the dashboard knows <strong>which URL/site the API is being used from</strong>.</li>
+          <li><strong>Usage recording</strong> — on every successful connect, the key's <code>lastUsed</code>, <code>usedOn</code> (site origin) and <code>usedFrom</code> (full page URL) are updated and an entry is appended to the usage log.</li>
+        </ul>
+
+        <div class="callout warn">
+          <b>Honest serverless note:</b> FrostByte has no backend, so keys live in <strong>localStorage</strong> of the
+          browser that created them, and validation runs inside <code>play.js</code> on the client. That is perfect for
+          <em>tracking usage per site, gating your own deployments and revoking access</em> — but it is not DRM: someone
+          editing your page's source could bypass a local check. For hard guarantees, pair keys with your own broker
+          (<a href="#selfhost">self-hosting</a>) that inspects an auth token.
+        </div>
+        <div class="callout ok">
+          <b>Keys are optional.</b> <code>new Play({ game })</code> without <code>apiKey</code> behaves exactly like v1 —
+          free, open matchmaking for everyone. Use keys when you want the oversight.
+        </div>
       </section>
 
       <!-- ───────── MATCHMAKING ───────── -->
@@ -354,7 +521,9 @@ game.onData = (d, from) =&gt; {
         <a class="brand" href="index.html"><span class="flake">❄</span> FrostByte</a>
         <nav>
           <a href="index.html">Home</a>
+          <a href="keys.html">API Keys</a>
           <a href="templates/pong.html">Pong</a>
+          <a href="templates/lua.html">Lua demo</a>
           <a href="templates/chat.html">Chat</a>
           <a href="templates/starter.html">Starter</a>
           <a href="https://github.com/gefrus112/FrostByte" target="_blank" rel="noopener">GitHub</a>

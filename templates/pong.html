@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FrostByte Pong — Multiplayer Template</title>
 <meta name="description" content="Full multiplayer Pong game powered by FrostByte play.js — quick match, room codes, host-authoritative physics.">
-<meta name="theme-color" content="#05070f">
+<meta name="theme-color" content="#08050f">
 <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;❄&lt;/text&gt;&lt;/svg&gt;">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <!--
@@ -24,8 +24,8 @@
   * { margin:0; padding:0; box-sizing:border-box; }
   html,body { height:100%; }
   body {
-    background: radial-gradient(1200px 700px at 50% -10%, #0e1830 0%, #05070f 60%);
-    color:#e8f6ff;
+    background: radial-gradient(1200px 700px at 50% -10%, #1a0f33 0%, #08050f 60%);
+    color:#f5efff;
     font-family:'Space Grotesk', system-ui, sans-serif;
     display:flex; flex-direction:column; align-items:center;
     min-height:100vh; overflow-x:hidden;
@@ -34,76 +34,76 @@
     width:100%; display:flex; align-items:center; gap:14px;
     padding:14px 22px; max-width:1000px;
   }
-  header a { color:#8aa2c0; text-decoration:none; font-size:14px; }
-  header a:hover { color:#22d3ee; }
+  header a { color:#a795c9; text-decoration:none; font-size:14px; }
+  header a:hover { color:#a855f7; }
   .logo { font-weight:700; font-size:18px; letter-spacing:.4px; }
-  .logo b { color:#22d3ee; }
+  .logo b { color:#a855f7; }
   .tag {
     margin-left:auto; font-family:'JetBrains Mono', monospace; font-size:11.5px;
-    color:#7dd3fc; border:1px solid rgba(125,211,252,.3); border-radius:999px; padding:4px 12px;
+    color:#e879f9; border:1px solid rgba(216,180,254,.3); border-radius:999px; padding:4px 12px;
   }
   .stage {
     position:relative; width:min(94vw, 920px);
     border-radius:18px; overflow:hidden;
-    border:1px solid rgba(125,211,252,.22);
-    box-shadow:0 30px 80px rgba(2,6,17,.7), 0 0 40px rgba(34,211,238,.08);
+    border:1px solid rgba(216,180,254,.22);
+    box-shadow:0 30px 80px rgba(6,2,14,.7), 0 0 40px rgba(168,85,247,.08);
     background:#060a16;
   }
   canvas { display:block; width:100%; height:auto; touch-action:none; }
   /* ── overlay ── */
   #overlay {
     position:absolute; inset:0; display:grid; place-items:center;
-    background:rgba(4,7,15,.82); backdrop-filter:blur(10px);
+    background:rgba(8,5,15,.82); backdrop-filter:blur(10px);
     transition:opacity .35s ease; z-index:5;
   }
   #overlay.hidden { opacity:0; pointer-events:none; }
   .panel {
     width:min(88%, 430px); text-align:center;
-    background:rgba(13,20,38,.72); border:1px solid rgba(125,211,252,.25);
+    background:rgba(26,17,46,.72); border:1px solid rgba(216,180,254,.25);
     border-radius:18px; padding:34px 30px;
-    box-shadow:0 20px 60px rgba(2,6,17,.6);
+    box-shadow:0 20px 60px rgba(6,2,14,.6);
   }
   .panel h1 {
     font-size:30px; letter-spacing:1px; margin-bottom:6px;
-    background:linear-gradient(90deg,#22d3ee,#a78bfa);
+    background:linear-gradient(90deg,#a855f7,#f472b6);
     -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
   }
-  .panel .sub { color:#8aa2c0; font-size:14px; margin-bottom:24px; }
+  .panel .sub { color:#a795c9; font-size:14px; margin-bottom:24px; }
   .btn {
     display:block; width:100%; margin:10px 0; padding:13px 18px;
-    border-radius:12px; border:1px solid rgba(125,211,252,.35);
-    background:rgba(34,211,238,.08); color:#e8f6ff;
+    border-radius:12px; border:1px solid rgba(216,180,254,.35);
+    background:rgba(168,85,247,.08); color:#f5efff;
     font-family:inherit; font-weight:600; font-size:15.5px; cursor:pointer;
     transition:all .2s ease;
   }
-  .btn:hover { background:rgba(34,211,238,.18); box-shadow:0 0 22px rgba(34,211,238,.25); transform:translateY(-1px); }
+  .btn:hover { background:rgba(168,85,247,.18); box-shadow:0 0 22px rgba(168,85,247,.25); transform:translateY(-1px); }
   .btn.primary {
-    background:linear-gradient(135deg,#22d3ee,#3b82f6);
-    color:#04121a; border-color:transparent;
+    background:linear-gradient(135deg,#a855f7,#ec4899);
+    color:#ffffff; border-color:transparent;
   }
-  .btn.primary:hover { box-shadow:0 6px 26px rgba(34,211,238,.45); }
+  .btn.primary:hover { box-shadow:0 6px 26px rgba(168,85,247,.45); }
   .btn.mini { display:inline-block; width:auto; padding:8px 18px; font-size:13.5px; }
   .row { display:flex; gap:8px; }
   .row input {
     flex:1; padding:12px 14px; border-radius:12px;
-    border:1px solid rgba(125,211,252,.35); background:rgba(2,6,17,.6);
-    color:#e8f6ff; font-family:'JetBrains Mono', monospace;
+    border:1px solid rgba(216,180,254,.35); background:rgba(6,2,14,.6);
+    color:#f5efff; font-family:'JetBrains Mono', monospace;
     font-size:16px; letter-spacing:4px; text-transform:uppercase; text-align:center;
     outline:none;
   }
-  .row input:focus { border-color:#22d3ee; box-shadow:0 0 16px rgba(34,211,238,.3); }
-  #status { min-height:22px; margin-top:14px; color:#7dd3fc; font-family:'JetBrains Mono', monospace; font-size:12.5px; }
+  .row input:focus { border-color:#a855f7; box-shadow:0 0 16px rgba(168,85,247,.3); }
+  #status { min-height:22px; margin-top:14px; color:#e879f9; font-family:'JetBrains Mono', monospace; font-size:12.5px; }
   .bigcode {
     font-family:'JetBrains Mono', monospace; font-size:44px; font-weight:600; letter-spacing:12px;
-    color:#22d3ee; text-shadow:0 0 24px rgba(34,211,238,.6); margin:10px 0 4px;
+    color:#a855f7; text-shadow:0 0 24px rgba(168,85,247,.6); margin:10px 0 4px;
     cursor:pointer; user-select:none;
   }
-  .hint { color:#8aa2c0; font-size:12.5px; margin-bottom:18px; }
-  .divider { display:flex; align-items:center; gap:12px; color:#5b7391; font-size:11.5px; margin:18px 0 6px; font-family:'JetBrains Mono', monospace; }
-  .divider::before, .divider::after { content:''; flex:1; height:1px; background:rgba(125,211,252,.2); }
+  .hint { color:#a795c9; font-size:12.5px; margin-bottom:18px; }
+  .divider { display:flex; align-items:center; gap:12px; color:#8f7fae; font-size:11.5px; margin:18px 0 6px; font-family:'JetBrains Mono', monospace; }
+  .divider::before, .divider::after { content:''; flex:1; height:1px; background:rgba(216,180,254,.2); }
   .win { font-size:22px; margin-bottom:8px; }
-  footer { padding:18px; color:#5b7391; font-size:12.5px; font-family:'JetBrains Mono', monospace; }
-  footer b { color:#7dd3fc; font-weight:400; }
+  footer { padding:18px; color:#8f7fae; font-size:12.5px; font-family:'JetBrains Mono', monospace; }
+  footer b { color:#e879f9; font-weight:400; }
 </style>
 </head>
 <body>
@@ -123,7 +123,7 @@
   </div>
 </div>
 
-<footer>first to 7 · <b>W/S</b> or <b>↑/↓</b> or touch-drag · host = <b style="color:#22d3ee">left</b> paddle · powered by play.js</footer>
+<footer>first to 7 · <b>W/S</b> or <b>↑/↓</b> or touch-drag · host = <b style="color:#a855f7">left</b> paddle · powered by play.js</footer>
 
 <script src="../play.js"></script>
 <script>
@@ -470,7 +470,7 @@ function applySnapshot(s) {
 
   if (s.fs !== view.lastFxSeq) {
     view.lastFxSeq = s.fs;
-    if (s.fk === 'paddle') { burst(s.fx, s.fy, '#7dd3fc', 10); beep(520, .05); }
+    if (s.fk === 'paddle') { burst(s.fx, s.fy, '#e879f9', 10); beep(520, .05); }
     if (s.fk === 'wall')   beep(340, .04);
     if (s.fk === 'score')  { burst(s.fx, s.fy, '#f472b6', 26); shakeT = 14; beep(180, .35, 'sawtooth', .1); }
   }
@@ -511,7 +511,7 @@ function frame() {
   /* fx triggers on host too */
   if (isHost && curFxs !== world.fxSeq) {
     curFxs = world.fxSeq;
-    if (world.fxKind === 'paddle') burst(world.fxX, world.fxY, '#7dd3fc', 10);
+    if (world.fxKind === 'paddle') burst(world.fxX, world.fxY, '#e879f9', 10);
     if (world.fxKind === 'score')  burst(world.fxX, world.fxY, '#f472b6', 26);
   }
 
@@ -547,17 +547,17 @@ function render(bx, by, pl, pr, phase, countT) {
 
   /* background */
   const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, '#081020'); g.addColorStop(1, '#05070f');
+  g.addColorStop(0, '#081020'); g.addColorStop(1, '#08050f');
   ctx.fillStyle = g; ctx.fillRect(-20, -20, W + 40, H + 40);
 
   /* subtle grid */
-  ctx.strokeStyle = 'rgba(125,211,252,.05)'; ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(216,180,254,.05)'; ctx.lineWidth = 1;
   for (let x = 0; x <= W; x += 45) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
   for (let y = 0; y <= H; y += 45) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
   /* center line */
   ctx.setLineDash([10, 14]);
-  ctx.strokeStyle = 'rgba(125,211,252,.25)'; ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(216,180,254,.25)'; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H); ctx.stroke();
   ctx.setLineDash([]);
 
@@ -568,7 +568,7 @@ function render(bx, by, pl, pr, phase, countT) {
   } else if (phase === 'count') trail.length = 0;
   trail.forEach((p, i) => {
     ctx.globalAlpha = (i / trail.length) * .3;
-    ctx.fillStyle = '#22d3ee';
+    ctx.fillStyle = '#a855f7';
     ctx.beginPath(); ctx.arc(p.x, p.y, BALL_R * (i / trail.length) * .9, 0, Math.PI*2); ctx.fill();
   });
   ctx.globalAlpha = 1;
@@ -584,13 +584,13 @@ function render(bx, by, pl, pr, phase, countT) {
   ctx.globalAlpha = 1;
 
   /* paddles */
-  glowRect(26, pl - PAD_H/2, PAD_W, PAD_H, '#22d3ee');
-  glowRect(W - 26 - PAD_W, pr - PAD_H/2, PAD_W, PAD_H, '#a78bfa');
+  glowRect(26, pl - PAD_H/2, PAD_W, PAD_H, '#a855f7');
+  glowRect(W - 26 - PAD_W, pr - PAD_H/2, PAD_W, PAD_H, '#f472b6');
 
   /* ball */
   if (phase !== 'menu') {
-    ctx.shadowColor = '#e8f6ff'; ctx.shadowBlur = 18;
-    ctx.fillStyle = '#e8f6ff';
+    ctx.shadowColor = '#f5efff'; ctx.shadowBlur = 18;
+    ctx.fillStyle = '#f5efff';
     ctx.beginPath(); ctx.arc(bx, by, BALL_R, 0, Math.PI*2); ctx.fill();
     ctx.shadowBlur = 0;
   }
@@ -598,7 +598,7 @@ function render(bx, by, pl, pr, phase, countT) {
   /* scores */
   ctx.font = "700 64px 'JetBrains Mono', monospace";
   ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(34,211,238,.75)';
+  ctx.fillStyle = 'rgba(168,85,247,.75)';
   ctx.fillText(isHost ? world.score.l : view.score.l, W/2 - 90, 78);
   ctx.fillStyle = 'rgba(167,139,250,.75)';
   ctx.fillText(isHost ? world.score.r : view.score.r, W/2 + 90, 78);
@@ -608,7 +608,7 @@ function render(bx, by, pl, pr, phase, countT) {
     const n = Math.ceil(countT / 60);
     ctx.font = "700 110px 'Space Grotesk', sans-serif";
     ctx.fillStyle = 'rgba(232,246,255,.9)';
-    ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 30;
+    ctx.shadowColor = '#a855f7'; ctx.shadowBlur = 30;
     ctx.fillText(n > 0 ? n : 'GO', W/2, H/2 + 38);
     ctx.shadowBlur = 0;
   }

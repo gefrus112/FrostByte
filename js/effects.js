@@ -50,7 +50,7 @@
           if (f.y > H + 4) { f.y = -6; f.x = Math.random() * W; }
           if (f.x > W + 4) f.x = -4; else if (f.x < -4) f.x = W + 4;
           ctx.globalAlpha = f.o;
-          ctx.fillStyle = '#bfe9ff';
+          ctx.fillStyle = '#e9d5ff';
           ctx.beginPath();
           ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
           ctx.fill();
@@ -102,7 +102,7 @@
             var dy = (nodes[a].y - nodes[b].y) * H;
             var d = Math.sqrt(dx * dx + dy * dy);
             if (d < 130 * DPR) {
-              ctx.strokeStyle = 'rgba(34,211,238,' + (0.16 * (1 - d / (130 * DPR))).toFixed(3) + ')';
+              ctx.strokeStyle = 'rgba(168,85,247,' + (0.16 * (1 - d / (130 * DPR))).toFixed(3) + ')';
               ctx.lineWidth = DPR;
               ctx.beginPath();
               ctx.moveTo(nodes[a].x * W, nodes[a].y * H);
@@ -113,7 +113,7 @@
         }
         /* nodes */
         for (var k = 0; k < N; k++) {
-          ctx.fillStyle = 'rgba(125,211,252,.5)';
+          ctx.fillStyle = 'rgba(232,121,249,.55)';
           ctx.beginPath();
           ctx.arc(nodes[k].x * W, nodes[k].y * H, 1.6 * DPR, 0, Math.PI * 2);
           ctx.fill();

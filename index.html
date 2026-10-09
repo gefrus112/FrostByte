@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FrostByte — Free Multiplayer for Every Web Game · play.js</title>
-  <meta name="description" content="FrostByte is a free JavaScript multiplayer library. One script tag, zero servers — matchmaking included, players found on your network, your country, or worldwide.">
-  <meta name="theme-color" content="#05070f">
+  <title>FrostByte — Free Multiplayer for Every Web Game · play.js v2</title>
+  <meta name="description" content="FrostByte is a free JavaScript multiplayer library. One script tag, zero servers — matchmaking included, a Lua bridge for Lua multiplayer, and API key management with usage tracking.">
+  <meta name="theme-color" content="#08050f">
   <meta property="og:title" content="FrostByte — free multiplayer for every web game">
   <meta property="og:description" content="One script. Zero servers. Live matchmaking. Make any HTML5 game multiplayer in minutes.">
   <meta property="og:type" content="website">
@@ -28,6 +28,7 @@
       <a class="tab active" href="index.html">Home</a>
       <a class="tab" href="docs.html">Docs</a>
       <a class="tab" href="templates/pong.html">Templates</a>
+      <a class="tab" href="keys.html">API Keys</a>
       <a class="tab" href="https://github.com/gefrus112/FrostByte" target="_blank" rel="noopener">GitHub ↗</a>
     </nav>
     <a class="btn btn-primary nav-cta" href="docs.html">Get Started</a>
@@ -39,14 +40,14 @@
     <section class="hero">
       <canvas id="mesh" class="hero-mesh"></canvas>
       <div class="hero-copy reveal">
-        <div class="pill"><span class="dot"></span> v1.0.0 · MIT · 100% free forever</div>
+        <div class="pill"><span class="dot"></span> v2.0.0 · MIT · 100% free forever</div>
         <h1>Multiplayer for every game.<br><span class="grad">One script. Zero servers.</span></h1>
         <p class="lead">
           <strong>FrostByte</strong> is a tiny JavaScript library that turns any HTML/CSS/JS game into a
-          live multiplayer experience. Drop in <code style="font-family:var(--mono);color:var(--cyan)">play.js</code>,
+          live multiplayer experience. Drop in <code style="font-family:var(--mono);color:var(--vio)">play.js</code>,
           call <strong>quickMatch()</strong> — and your game searches for players on
           <strong>your network</strong>, in <strong>your country</strong>, then <strong>worldwide</strong>.
-          No backend. No keys. No bills.
+          Write the networking in JavaScript — or in <strong>Lua</strong> with the new bridge. No backend. No bills.
         </p>
         <div class="cta-row">
           <a class="btn btn-primary btn-lg" href="docs.html">Read the Docs →</a>
@@ -110,9 +111,19 @@ game.<span class="t-fn">broadcast</span>({ type: <span class="t-str">'move'</spa
           <p>Star topology: the room host relays traffic between players, so 2–8 player games work without a server, and guest→guest messages just work via <code>send(data, toId)</code>.</p>
         </div>
         <div class="card reveal">
+          <div class="ico">🌙</div>
+          <h3>Multiplayer in Lua</h3>
+          <p><strong>New in v2.</strong> Add <code>play-lua.js</code> and write your networking in <strong>Lua</strong> — a full <code>net.*</code> table runs on the Fengari VM in the browser, riding the same P2P mesh.</p>
+        </div>
+        <div class="card reveal d1">
+          <div class="ico">🔑</div>
+          <h3>API keys &amp; usage tracking</h3>
+          <p><strong>New in v2.</strong> Generate keys, allow-list site URLs, and see <strong>the exact page URL every key is used from</strong> — in the <a href="keys.html">API Keys dashboard</a>.</p>
+        </div>
+        <div class="card reveal d2">
           <div class="ico">🧩</div>
           <h3>Templates included</h3>
-          <p>Copy-paste starting points: a full <strong>multiplayer Pong</strong>, a lobby <strong>chat</strong>, and a minimal <strong>starter</strong>. Fork one and rename the sprites — done.</p>
+          <p>Copy-paste starting points: a full <strong>multiplayer Pong</strong>, a lobby <strong>chat</strong>, a <strong>Lua</strong>-powered room, and a minimal <strong>starter</strong>. Fork one and rename the sprites — done.</p>
         </div>
         <div class="card reveal d1">
           <div class="ico">🛠</div>
@@ -186,6 +197,15 @@ game.broadcast({ paddleY: 240 });</code></pre></div>
           </div>
         </div>
         <div class="card tpl-card reveal d1">
+          <div class="ico">🌙</div>
+          <h3>Lua Chat — net.* in Lua</h3>
+          <p>The whole networking layer is written in <strong>Lua</strong>: <code>net.broadcast()</code>, <code>net.on('data')</code>, <code>net.players()</code> — running on the Fengari VM. JavaScript calls into Lua, Lua touches the DOM back.</p>
+          <div class="tpl-meta">
+            <a class="btn btn-primary" href="templates/lua.html">▶ Run the Lua VM</a>
+            <span class="diff">NEW IN v2</span>
+          </div>
+        </div>
+        <div class="card tpl-card reveal d2">
           <div class="ico">💬</div>
           <h3>Lobby Chat</h3>
           <p>The "hello world" of networking — join a room, broadcast text messages, live player roster. Perfect first template to dissect.</p>
@@ -194,7 +214,7 @@ game.broadcast({ paddleY: 240 });</code></pre></div>
             <span class="diff">BEGINNER</span>
           </div>
         </div>
-        <div class="card tpl-card reveal d2">
+        <div class="card tpl-card reveal d3">
           <div class="ico">🧪</div>
           <h3>Starter Kit</h3>
           <p>Blank canvas + connection overlay + status log + a ping-echo test button. Your new game starts here — it's all commented.</p>
@@ -225,7 +245,9 @@ game.broadcast({ paddleY: 240 });</code></pre></div>
         <a class="brand" href="index.html"><span class="flake">❄</span> FrostByte</a>
         <nav>
           <a href="docs.html">Docs</a>
+          <a href="keys.html">API Keys</a>
           <a href="templates/pong.html">Pong</a>
+          <a href="templates/lua.html">Lua demo</a>
           <a href="templates/chat.html">Chat</a>
           <a href="templates/starter.html">Starter</a>
           <a href="https://github.com/gefrus112/FrostByte" target="_blank" rel="noopener">GitHub</a>

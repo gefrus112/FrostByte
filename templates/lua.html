@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FrostByte Lua — Multiplayer Template</title>
+<meta name="description" content="A multiplayer chat room whose entire networking layer is written in Lua — running on the Fengari VM in your browser, powered by FrostByte play-lua.js.">
+<meta name="theme-color" content="#08050f">
+<link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;❄&lt;/text&gt;&lt;/svg&gt;">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<!--
+  ═══════════════════════════════════════════════════════════════
+  FROSTBYTE LUA — multiplayer written in LUA, powered by JS.
+  The networking layer below is 100% Lua (net.* table), executed
+  by the Fengari Lua VM inside your browser. The HTML/JS shell is
+  only the UI: buttons call Lua functions via api.call(), and Lua
+  touches this page via js.run().
+  Open in two tabs → Start both → Quick Match both. 🎉
+  ═══════════════════════════════════════════════════════════════
+-->
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: radial-gradient(1200px 700px at 50% -10%, #1a0f33 0%, #08050f 60%);
+    color:#f5efff; font-family:'Space Grotesk', system-ui, sans-serif;
+    min-height:100vh; display:flex; flex-direction:column;
+  }
+  header { display:flex; align-items:center; gap:14px; padding:16px 24px; max-width:980px; margin:0 auto; width:100%; }
+  .logo { font-weight:700; font-size:18px; } .logo b { color:#a855f7; }
+  .logo .lua { font-family:'JetBrains Mono',monospace; font-size:11px; color:#d946ef; border:1px solid rgba(217,70,239,.4); border-radius:6px; padding:1px 7px; margin-left:8px; }
+  header a { color:#a795c9; text-decoration:none; font-size:14px; margin-left:auto; }
+  header a:hover { color:#d946ef; }
+  #app { width:min(94vw, 980px); margin:6px auto 30px; flex:1; display:grid; grid-template-columns: 320px 1fr; gap:14px; min-height:0; }
+  .panel {
+    background:rgba(26,17,46,.66); border:1px solid rgba(216,180,254,.14);
+    border-radius:16px; padding:20px; backdrop-filter:blur(10px);
+  }
+  .panel h1 { font-size:24px; margin-bottom:4px; background:linear-gradient(90deg,#a855f7,#d946ef,#f472b6);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+  .panel .sub { color:#a795c9; font-size:13.5px; margin-bottom:16px; }
+  label { display:block; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.8px; color:#d946ef; margin:14px 0 6px; }
+  input {
+    width:100%; background:rgba(6,2,14,.6); color:#f5efff; border:1px solid rgba(216,180,254,.3);
+    border-radius:10px; padding:11px 13px; font-family:inherit; font-size:14.5px; outline:none;
+  }
+  input:focus { border-color:#a855f7; box-shadow:0 0 0 3px rgba(168,85,247,.18); }
+  .btn {
+    width:100%; margin-top:10px; padding:12px 14px; border-radius:11px; border:1px solid transparent;
+    background:linear-gradient(135deg,#a855f7,#ec4899); color:#fff; font-weight:700; font-family:inherit;
+    font-size:15px; cursor:pointer; transition:transform .2s ease, box-shadow .25s ease;
+  }
+  .btn:hover { transform:translateY(-2px); box-shadow:0 8px 26px rgba(168,85,247,.4); }
+  .btn.ghost { background:rgba(216,180,254,.07); border-color:rgba(216,180,254,.3); color:#f5efff; }
+  .btn.ghost:hover { background:rgba(216,180,254,.14); box-shadow:0 0 20px rgba(168,85,247,.25); }
+  .btn:disabled { opacity:.45; cursor:not-allowed; transform:none; box-shadow:none; }
+  .row { display:flex; gap:8px; }
+  .row input { flex:1; margin-top:10px; font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:3px; }
+  .row .btn { width:auto; margin-top:10px; padding:12px 18px; }
+  #status { min-height:20px; margin-top:14px; color:#e879f9; font-family:'JetBrains Mono',monospace; font-size:12.5px; }
+  #roster { margin-top:16px; border-top:1px solid rgba(216,180,254,.14); padding-top:12px; }
+  #roster .rh { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.8px; color:#d946ef; margin-bottom:8px; }
+  #rosterList .pl { font-size:13.5px; color:#cfc3e8; padding:4px 8px; border-radius:8px; margin-bottom:4px; background:rgba(216,180,254,.05); }
+  #rosterList .pl.host { color:#fbbf24; }
+  #logPanel { display:flex; flex-direction:column; min-height:420px; }
+  #log { flex:1; overflow-y:auto; padding-right:6px; }
+  .msg { margin-bottom:10px; animation:pop .25s ease; }
+  @keyframes pop { from { transform:translateY(6px); opacity:0; } }
+  .msg .who { font-size:11px; font-family:'JetBrains Mono',monospace; color:#e879f9; display:block; margin-bottom:2px; }
+  .msg .txt { font-size:14.5px; color:#e6dcf7; word-break:break-word; }
+  .msg.sys .txt { color:#8f7fae; font-size:13px; font-style:italic; }
+  .msg.self .who { color:#34d399; }
+  #chatForm { display:flex; gap:8px; margin-top:14px; }
+  #chatForm input { flex:1; }
+  #chatForm button {
+    padding:11px 20px; border-radius:10px; border:none; cursor:pointer;
+    background:linear-gradient(135deg,#a855f7,#ec4899); color:#fff; font-weight:700; font-family:inherit;
+  }
+  #luaNote {
+    grid-column:1 / -1; border:1px solid rgba(216,180,254,.14); border-radius:16px;
+    background:rgba(6,2,14,.55); overflow:hidden;
+  }
+  #luaNote .lb { display:flex; align-items:center; gap:8px; padding:9px 14px; border-bottom:1px solid rgba(216,180,254,.14);
+    background:rgba(216,180,254,.04); font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#a795c9; }
+  #luaNote .lb b { color:#d946ef; }
+  #luaNote pre {
+    margin:0; padding:16px 18px; overflow:auto; max-height:340px;
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; line-height:1.65; color:#cfc3e8;
+  }
+  footer { text-align:center; color:#8f7fae; font-family:'JetBrains Mono',monospace; font-size:12px; padding:10px 0 26px; }
+  footer b { color:#e879f9; font-weight:400; }
+  @media (max-width:760px) {
+    #app { grid-template-columns:1fr; }
+    #logPanel { min-height:320px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">❄ Frost<b>Byte</b><span class="lua">LUA EDITION</span></div>
+  <a href="../index.html">← back to docs</a>
+</header>
+
+<div id="app">
+
+  <!-- ═════════ connect panel ═════════ -->
+  <div class="panel">
+    <h1>Multiplayer in Lua</h1>
+    <div class="sub">The networking below is written in <b>Lua</b> — running on the Fengari VM in your browser.</div>
+
+    <label>YOUR NAME</label>
+    <input id="name" maxlength="16" placeholder="e.g. moonwizard" value="">
+
+    <label>ROOM CODE (optional)</label>
+    <input id="code" maxlength="4" placeholder="K7XF" style="text-transform:uppercase">
+
+    <button class="btn" id="startBtn">▶ Start the Lua VM</button>
+    <button class="btn ghost" id="quickBtn" disabled>⚡ Quick Match</button>
+    <button class="btn ghost" id="hostBtn" disabled>🏠 Host a room</button>
+    <div class="row">
+      <input id="joinCode" maxlength="4" placeholder="CODE">
+      <button class="btn ghost" id="joinBtn" disabled>Join</button>
+    </div>
+
+    <div id="status">Lua VM idle — press Start.</div>
+
+    <div id="roster">
+      <div class="rh">PLAYERS IN ROOM</div>
+      <div id="rosterList"><div class="pl">— not connected —</div></div>
+    </div>
+  </div>
+
+  <!-- ═════════ chat panel ═════════ -->
+  <div class="panel" id="logPanel">
+    <div id="log">
+      <div class="msg sys"><span class="who">❄ frostbyte</span><div class="txt">This chat runs on <b>Lua</b>: net.broadcast / net.on('data') / net.players() — all called from Lua code, synced over the same P2P WebRTC mesh as every FrostByte game.</div></div>
+    </div>
+    <form id="chatForm" autocomplete="off">
+      <input id="chatInput" maxlength="200" placeholder="say something in Lua multiplayer…">
+      <button type="submit" id="sendBtn" disabled>send</button>
+    </form>
+  </div>
+
+  <!-- ═════════ the actual Lua program ═════════ -->
+  <div id="luaNote">
+    <div class="lb">📄 <b>lua.lua</b> — this is the entire networking program. It is real, live code: <b>view-source</b> to see it inside <b>&lt;script type="text/plain"&gt;</b>.</div>
+    <pre id="luaPreview"></pre>
+  </div>
+
+</div>
+
+<footer>net.broadcast in <b>Lua</b> → WebRTC in JS → zero servers ❄ powered by <b>play-lua.js</b> · MIT</footer>
+
+<!-- ══════════════════════════════════════════════════════════════
+     THE LUA PROGRAM (stored as inert text; run by the Start button)
+     ══════════════════════════════════════════════════════════════ -->
+<script type="text/plain" id="luaSrc">
+-- ❄ FrostByte Lua multiplayer — chat demo
+-- PLAYER_NAME is injected from JavaScript (FrostByteLua.run globals).
+
+net.init({ game = 'frostbyte-lua-chat', player = PLAYER_NAME })
+
+-- ── tiny helpers: render into the page through js.run ──────────
+local function esc(s)
+  s = tostring(s)
+  s = string.gsub(s, '&', '&amp;')
+  s = string.gsub(s, '<', '&lt;')
+  s = string.gsub(s, '>', '&gt;')
+  return s
+end
+
+local function js_call(fn, ...)
+  local parts = {}
+  for _, v in ipairs({...}) do
+    parts[#parts+1] = string.format('%q', tostring(v))
+  end
+  js.run(fn .. '(' .. table.concat(parts, ', ') .. ')')
+end
+
+local function chat(who, text, cls)
+  js_call('ui.chat', who, text, cls or '')
+end
+
+local function status(text, ok)
+  js_call('ui.status', text, ok and 'ok' or '')
+end
+
+-- ── network events, handled in Lua ─────────────────────────────
+net.on('status', function (state, detail)
+  if state ~= 'connected' then status('⚙ ' .. tostring(detail or state)) end
+end)
+
+net.on('ready', function (r)
+  local where = r.code and ('room ' .. r.code) or tostring(r.scope or 'match')
+  status('✓ connected · ' .. where, true)
+  if r.code then js_call('ui.setCode', r.code) end
+  chat('❄ frostbyte', 'connected as ' .. tostring(PLAYER_NAME) .. ' — networking by Lua', 'sys')
+  js.run('ui.roster()')
+end)
+
+net.on('playerjoin', function (p)
+  chat('❄ frostbyte', tostring(p.name or p.id) .. ' joined', 'sys')
+  js.run('ui.roster()')
+end)
+
+net.on('playerleave', function (p)
+  chat('❄ frostbyte', tostring(p.name or p.id) .. ' left', 'sys')
+  js.run('ui.roster()')
+end)
+
+net.on('data', function (d, from)
+  if type(d) == 'table' and d.t == 'chat' then
+    local who = tostring(d.name or (from and from.id) or '?')
+    chat(who, tostring(d.text))
+  end
+end)
+
+net.on('error', function (e)
+  status('⚠ ' .. tostring(e and e.message or 'error'))
+end)
+
+-- ── actions the HTML buttons call from JavaScript ──────────────
+function do_quick()
+  status('searching for players… (same network → country → worldwide)')
+  net.quickmatch(function (isHost, scopeOrErr)
+    if isHost == nil then
+      status('⚠ ' .. tostring(scopeOrErr))
+    end
+    -- success → the 'ready' event above takes over
+  end)
+end
+
+function do_host()
+  status('opening a room…')
+  net.host(function (code, err)
+    if code == nil then status('⚠ ' .. tostring(err)) end
+  end)
+end
+
+function do_join(code)
+  code = string.upper(string.gsub(tostring(code), '[^%w]', ''))
+  if #code ~= 4 then status('⚠ enter the 4-character room code first') return end
+  status('joining ' .. code .. '…')
+  net.join(code, function (joined, err)
+    if joined == nil then status('⚠ ' .. tostring(err)) end
+  end)
+end
+
+function send_chat(text)
+  text = string.sub(tostring(text), 1, 200)
+  if text == '' then return end
+  net.broadcast({ t = 'chat', name = tostring(PLAYER_NAME), text = text })
+  chat(tostring(PLAYER_NAME), text)   -- local echo: P2P hosts never echo back to the sender
+end
+
+function roster_html()
+  local out = {}
+  local ps = net.players()
+  for i = 1, #ps do
+    local p = ps[i]
+    out[#out+1] = '<div class="pl' .. (p.isHost and ' host' or '') .. '">' ..
+      (p.isHost and '👑 ' or '🎮 ') .. esc(p.name or p.id) .. '</div>'
+  end
+  if #out == 0 then return '<div class="pl">— nobody —</div>' end
+  return table.concat(out)
+end
+
+chat('❄ frostbyte', 'Lua VM online — net.* table is live. Press Quick Match!', 'sys')
+status('Lua VM running — choose an action.', true)
+</script>
+
+<script src="../play.js"></script>
+<script src="../play-lua.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); };
+  var nameEl = $('#name'), codeEl = $('#code'), statusEl = $('#status');
+  var quickBtn = $('#quickBtn'), hostBtn = $('#hostBtn'), joinBtn = $('#joinBtn');
+  var startBtn = $('#startBtn'), sendBtn = $('#sendBtn'), logEl = $('#log');
+  var luaApi = null, started = false;
+
+  /* show the Lua source in the note panel */
+  var src = $('#luaSrc').textContent.trim();
+  $('#luaPreview').textContent = src;
+
+  /* the tiny JS "ui" library Lua reaches through js.run() */
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  window.ui = {
+    status: function (t, ok) {
+      statusEl.textContent = String(t || '');
+      statusEl.style.color = ok === 'ok' ? '#34d399' : '#e879f9';
+    },
+    chat: function (who, text, cls) {
+      var div = document.createElement('div');
+      div.className = 'msg' + (cls === 'sys' ? ' sys' : (who === nameEl.value ? ' self' : ''));
+      div.innerHTML = '<span class="who">' + esc(who) + '</span><div class="txt">' + esc(text) + '</div>';
+      logEl.appendChild(div);
+      logEl.scrollTop = logEl.scrollHeight;
+    },
+    setCode: function (c) { codeEl.value = c; $('#joinCode').value = c; },
+    roster: function () {
+      if (!luaApi) return;
+      try { $('#rosterList').innerHTML = luaApi.call('roster_html'); }
+      catch (e) { console.error(e); }
+    }
+  };
+
+  function enable() {
+    quickBtn.disabled = hostBtn.disabled = joinBtn.disabled = sendBtn.disabled = false;
+    startBtn.disabled = true;
+    startBtn.textContent = '✓ Lua VM running';
+  }
+
+  startBtn.addEventListener('click', function () {
+    if (started) return;
+    started = true;
+    statusEl.textContent = 'loading the Lua VM (fengari)…';
+    window.FROSTBYTE_LUA_GLOBALS = { PLAYER_NAME: (nameEl.value.trim() || 'guest') };
+    FrostByteLua.run(src, { globals: window.FROSTBYTE_LUA_GLOBALS }).then(function (res) {
+      if (!res.ok) {
+        started = false;
+        startBtn.disabled = false;
+        startBtn.textContent = '▶ Start the Lua VM';
+        window.ui.status('⚠ ' + res.error);
+        return;
+      }
+      luaApi = res.api;
+      enable();
+    }).catch(function (e) { window.ui.status('⚠ ' + e.message); started = false; });
+  });
+
+  quickBtn.addEventListener('click', function () { if (luaApi) luaApi.call('do_quick'); });
+  hostBtn.addEventListener('click',  function () { if (luaApi) luaApi.call('do_host'); });
+  joinBtn.addEventListener('click',  function () { if (luaApi) luaApi.call('do_join', $('#joinCode').value); });
+  $('#joinCode').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); if (luaApi) luaApi.call('do_join', $('#joinCode').value); }
+  });
+
+  $('#chatForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var inp = $('#chatInput');
+    if (luaApi && inp.value.trim()) { luaApi.call('send_chat', inp.value); inp.value = ''; }
+  });
+})();
+</script>
+</body>
+</html>
